@@ -23,11 +23,5 @@
       "src": "/(.*)",
       "dest": "/frontend/$1"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/auto-approve",
-      "schedule": "*/15 * * * *"
-    }
   ]
 }
