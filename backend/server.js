@@ -1129,10 +1129,10 @@ app.post('/api/store/direct-order', authenticate, async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 5000;
-
-// Auto-Approve Cron Job (Runs every 15 minutes)
-setInterval(async () => {
+// ----------------------------------------------------
+// AUTO-APPROVE CRON JOB ENDPOINT (For Vercel)
+// ----------------------------------------------------
+app.get('/api/cron/auto-approve', async (req, res) => {
     try {
         const pendingSubmissions = await prisma.submission.findMany({
             where: { status: 'pending' },
@@ -1167,11 +1167,19 @@ setInterval(async () => {
                 console.log(`Auto-approved submission ${sub.id}`);
             }
         }
+        res.status(200).json({ message: 'Cron job executed successfully' });
     } catch (e) {
         console.error('Error in auto-approve cron:', e);
+        res.status(500).json({ error: 'Cron error' });
     }
-}, 15 * 60 * 1000);
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
 });
+
+const PORT = process.env.PORT || 5000;
+
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+module.exports = app;

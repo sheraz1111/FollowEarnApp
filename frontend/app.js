@@ -3,7 +3,7 @@
    ============================================================ */
 
 // ===== STATE =====
-const API_URL = typeof API_BASE !== 'undefined' ? API_BASE : 'http://localhost:5000/api';
+const API_URL = typeof API_BASE !== 'undefined' ? API_BASE : '/api';
 
 const state = {
     user: null,
@@ -1005,7 +1005,7 @@ window.reviewMyCampaignSubmissions = async function() {
                     <div style="margin-bottom:10px;font-size:0.9rem;color:var(--gray);">
                         Campaign #${s.request.id} - ${s.request.target_link}
                     </div>
-                    <img src="http://localhost:5000${s.screenshot_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;cursor:pointer;border:1px solid #333;" onclick="window.open('http://localhost:5000${s.screenshot_url}')">
+                    <img src="${s.screenshot_url}" style="max-width:100%;border-radius:8px;margin-bottom:10px;cursor:pointer;border:1px solid #333;" onclick="window.open('${s.screenshot_url}')">
                     <div style="display:flex;gap:10px;">
                         <button onclick="ownerApproveSubmission(${s.id}, this)" style="flex:1;background:var(--green);color:white;border:none;padding:10px;border-radius:8px;cursor:pointer;font-weight:bold;"><i class="fas fa-check"></i> Approve</button>
                         <button onclick="ownerRejectSubmission(${s.id}, this)" style="flex:1;background:#ff4757;color:white;border:none;padding:10px;border-radius:8px;cursor:pointer;font-weight:bold;"><i class="fas fa-times"></i> Reject</button>
@@ -1106,7 +1106,7 @@ async function buildHistoryPage() {
                     <div class="history-item">
                         <div style="display:flex;align-items:center;gap:12px;">
                             <div style="width:42px;height:42px;border-radius:50%;background:var(--card-solid);border:1px solid var(--border-main);display:flex;align-items:center;justify-content:center;font-size:1.1rem;overflow:hidden;">
-                                <img src="http://localhost:5000${sub.screenshot_url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='<i class=\\'fas fa-image\\'></i>'">
+                                <img src="${sub.screenshot_url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='<i class=\\'fas fa-image\\'></i>'">
                             </div>
                             <div>
                                 <div style="font-weight:500;">${sub.request && sub.request.platform ? sub.request.platform.name : 'Task'}</div>
@@ -1583,7 +1583,7 @@ function buildAdminSubmissionGrid(subs, pageContext = 'super-admin') {
     subs.forEach(sub => {
         html += `
             <div class="screenshot-card pending">
-                <img src="http://localhost:5000${sub.screenshot_url}" class="screenshot-img" alt="Screenshot" onclick="viewImage('http://localhost:5000${sub.screenshot_url}', ${sub.id}, '${pageContext}')">
+                <img src="${sub.screenshot_url}" class="screenshot-img" alt="Screenshot" onclick="viewImage('${sub.screenshot_url}', ${sub.id}, '${pageContext}')">
                 <div class="screenshot-info">
                     <div style="font-weight:600;margin-bottom:3px;">${sub.user ? sub.user.name : 'User'}</div>
                     <div style="font-size:0.8rem;color:var(--gray);margin-bottom:10px;">${new Date(sub.createdAt || Date.now()).toLocaleString()}</div>
@@ -1628,7 +1628,7 @@ window.loadSuperAdminTab = async function(tab, btn) {
                         <div style="margin-bottom:5px;color:var(--gray);">Price Paid: $${o.price} via ${o.method}</div>
                         <div style="margin-bottom:10px;color:var(--gray);">Target URL: <a href="${o.targetUrl}" target="_blank" style="color:var(--primary);">${o.targetUrl}</a></div>
                         <div style="margin-bottom:10px;color:var(--gray);">TxID: ${o.txId}</div>
-                        ${o.proofImg ? `<img src="http://localhost:5000${o.proofImg}" style="max-width:100px;border-radius:5px;margin-bottom:10px;cursor:pointer;" onclick="window.open('http://localhost:5000${o.proofImg}')">` : ''}
+                        ${o.proofImg ? `<img src="${o.proofImg}" style="max-width:100px;border-radius:5px;margin-bottom:10px;cursor:pointer;" onclick="window.open('${o.proofImg}')">` : ''}
                         ${o.status === 'pending' ? `
                             <div style="display:flex; gap:10px; margin-top:10px;">
                                 <button onclick="adminProcessDirectOrder(${o.id}, 'completed')" style="flex:1;padding:8px;border-radius:5px;background:var(--green);border:none;color:#fff;cursor:pointer;">Complete</button>
@@ -1673,7 +1673,7 @@ window.loadSuperAdminTab = async function(tab, btn) {
                         <div style="font-size:0.9rem;color:var(--gray);margin-bottom:5px;">TID / TxID: <strong style="color:var(--gold)">${d.txId}</strong></div>
                         <div style="font-size:0.9rem;color:var(--gray);margin-bottom:15px;">Amount Paid: <strong>$${d.price}</strong> => <strong>${d.amount} Coins</strong></div>
                         
-                        ${d.proofImg ? `<img src="http://localhost:5000${d.proofImg}" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:15px;cursor:pointer;" onclick="viewImage('http://localhost:5000${d.proofImg}')">` : ''}
+                        ${d.proofImg ? `<img src="${d.proofImg}" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:15px;cursor:pointer;" onclick="viewImage('${d.proofImg}')">` : ''}
                         
                         ${d.status === 'pending' ? `
                         <div style="display:flex;gap:10px;">
@@ -2039,7 +2039,7 @@ function selectPaymentMethod(method) {
             <div style="color:#555;margin-bottom:8px;">Account Title: Viral Loop</div>
             <div style="font-size:1.3rem;font-weight:bold;color:#c0392b;">Amount: Rs. ${state.selectedPackage.priceInRs || (state.selectedPackage.price * 278)} (≈ $${state.selectedPackage.price})</div>
             <div style="margin-top:10px; text-align:center;">
-                <img src="http://localhost:5000/uploads/qr_jazzcash.jpg" alt="JazzCash QR" style="max-width:200px; border-radius:10px; border:2px solid var(--primary);">
+                <img src="/uploads/qr_jazzcash.jpg" alt="JazzCash QR" style="max-width:200px; border-radius:10px; border:2px solid var(--primary);">
                 <div style="color:var(--text-sub); font-size:0.9rem; margin-top:5px;">Scan to Pay via JazzCash App</div>
             </div>
         `;
@@ -2050,7 +2050,7 @@ function selectPaymentMethod(method) {
             <div style="color:#555;margin-bottom:8px;">Coin & Network: <strong style="color:var(--gold)">USDT (ERC20)</strong> <br>Account Title: Viral Loop</div>
             <div style="font-size:1.3rem;font-weight:bold;color:#c0392b;">Amount: $${state.selectedPackage.price}</div>
             <div style="margin-top:10px; text-align:center;">
-                <img src="http://localhost:5000/uploads/qr_usdt.jpg" alt="USDT QR" style="max-width:200px; border-radius:10px; border:2px solid var(--gold);">
+                <img src="/uploads/qr_usdt.jpg" alt="USDT QR" style="max-width:200px; border-radius:10px; border:2px solid var(--gold);">
                 <div style="color:var(--text-sub); font-size:0.9rem; margin-top:5px;">Scan to Pay via Crypto Wallet</div>
             </div>
         `;
