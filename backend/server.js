@@ -1176,10 +1176,15 @@ app.get('/api/cron/auto-approve', async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-if (require.main === module) {
+if (typeof require !== 'undefined' && require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+} else if (process.env.NODE_ENV !== 'production' && typeof process.env.VERCEL === 'undefined') {
+    // Fallback for local development using ESM
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });
 }
 
-module.exports = app;
+export default app;
