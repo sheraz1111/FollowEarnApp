@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: follow-earn-backend
+    env: node
+    plan: free
+    branch: main
+    buildCommand: "cd backend && npm install && npx prisma generate && npx prisma db push"
+    startCommand: "cd backend && node server.js"
+    envVars:
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_M7nd8zXRCeSH@ep-fragrant-scene-at9isuu7.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require"
+      - key: JWT_SECRET
+        value: "viral123"
