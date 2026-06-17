@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViralLoop - Creator Network</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Google Translate Script -->
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <style>
+        .goog-te-gadget-simple {
+            background-color: var(--card-solid) !important;
+            border: 1px solid var(--border-main) !important;
+            border-radius: 12px !important;
+            padding: 8px 15px !important;
+            color: var(--text-main) !important;
+            font-size: 0.95rem !important;
+            display: flex !important;
+            align-items: center !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .goog-te-gadget-simple:hover {
+            border-color: var(--gold) !important;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        .goog-te-gadget-simple .goog-te-menu-value span {
+            color: var(--text-main) !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+        }
+        .goog-te-gadget-icon {
+            display: none !important;
+        }
+        /* Hide Google top banner */
+        body { top: 0px !important; }
+        .goog-te-banner-frame.skiptranslate { display: none !important; }
+        #goog-gt-tt { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" onclick="closeSidebar()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:998;"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div id="sidebarProfile" style="text-align:left; padding-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                    <div id="sidebarAvatar" style="width:45px; height:45px; background:var(--primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem; color:#fff;">U</div>
+                    <div>
+                        <h3 id="sidebarName" style="color:var(--text-main); font-size:1rem; margin:0;">User</h3>
+                        <div style="font-size:0.75rem; color:var(--gold);">
+                            UID: <span id="sidebarUID">...</span>
+                            <i class="fas fa-copy" onclick="copyUID()" style="cursor:pointer; margin-left:5px;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h3 style="color:var(--gold); margin-top:10px;"><i class="fas fa-bars"></i> Menu</h3>
+        </div>
+        <div class="sidebar-menu">
+            <div class="sidebar-item active" onclick="showPage('home'); closeSidebar();"><i class="fas fa-home"></i> Home</div>
+            <div class="sidebar-item" onclick="showPage('profile-page'); closeSidebar();"><i class="fas fa-user"></i> My Profile</div>
+            <div class="sidebar-item" onclick="showPage('mychannel'); closeSidebar();"><i class="fas fa-bullhorn"></i> My Campaigns</div>
+            <div class="sidebar-item" onclick="showPage('history'); closeSidebar();"><i class="fas fa-history"></i> My History</div>
+            <div class="sidebar-item" onclick="showPage('leaderboard'); closeSidebar();"><i class="fas fa-trophy"></i> Leaderboard</div>
+            <div class="sidebar-item" onclick="showPage('earn'); closeSidebar();"><i class="fas fa-coins"></i> Earn Free</div>
+            
+            <!-- Personal Admin Dashboard -->
+            <div class="sidebar-item" onclick="showPage('personal-admin'); closeSidebar();" style="background:linear-gradient(45deg,var(--primary),#ff4757);color:#fff;margin-top:10px;font-weight:bold;justify-content:center;flex-direction:column;padding:15px;border-radius:10px;text-align:center;">
+                <div><i class="fas fa-user-shield"></i> Admin Dashboard</div>
+                <div style="font-size:0.85rem;margin-top:3px;font-weight:normal;">(Approve Tasks)</div>
+            </div>
+            
+            <!-- Super Admin Mode -->
+            <div class="sidebar-item hidden" id="sidebarSuperAdminBtn" onclick="showPage('super-admin'); closeSidebar();" style="background:linear-gradient(45deg,var(--gold),#ffed4e);color:#000;margin-top:10px;font-weight:bold;justify-content:center;flex-direction:column;padding:15px;border-radius:10px;text-align:center;">
+                <div><i class="fas fa-crown"></i> Switch to Admin</div>
+                <div style="font-size:0.85rem;margin-top:3px;font-weight:normal;">Mode</div>
+            </div>
+
+            <div class="sidebar-item hidden" id="sidebarSuperAdminLink" onclick="showPage('super-admin'); closeSidebar();" style="color:var(--gold);font-weight:bold;justify-content:center;margin-top:15px;font-size:0.9rem;text-align:center;">
+                <i class="fas fa-user-tie"></i> SUPER ADMIN PANEL
+            </div>
+
+            <hr style="border-color:#333; margin: 10px 0;">
+            <div style="padding:15px 20px;">
+                <div style="color:var(--gold);font-weight:bold;margin-bottom:10px;font-size:0.9rem;"><i class="fas fa-globe"></i> Language</div>
+                <div id="google_translate_element" style="display:none;"></div>
+                <select id="customLanguageSelector" onchange="changeLanguage(this.value)" style="width:100%; padding:10px 15px; border-radius:10px; border:1px solid var(--border-main); background:var(--card-solid); color:var(--text-main); font-size:0.95rem; outline:none; cursor:pointer; font-family:'Inter', sans-serif; appearance:none; -webkit-appearance:none; background-image:url('data:image/svg+xml;utf8,<svg fill=%22%23ffffff%22 height=%2224%22 viewBox=%220 0 24 24%22 width=%2224%22 xmlns=%22http://www.w3.org/2000/svg%22><path d=%22M7 10l5 5 5-5z%22/></svg>'); background-repeat:no-repeat; background-position-x:95%; background-position-y:50%;">
+                    <option value="en">English</option>
+                    <option value="ur">Urdu (اردو)</option>
+                    <option value="hi">Hindi (हिंदी)</option>
+                    <option value="ar">Arabic (العربية)</option>
+                    <option value="bn">Bengali (বাংলা)</option>
+                    <option value="fr">French (Français)</option>
+                    <option value="es">Spanish (Español)</option>
+                    <option value="ru">Russian (Русский)</option>
+                    <option value="zh-CN">Chinese (中文)</option>
+                </select>
+            </div>
+            <hr style="border-color:#333; margin: 10px 0;">
+            <div class="sidebar-item" onclick="showPage('privacy'); closeSidebar();"><i class="fas fa-user-lock"></i> Privacy Policy</div>
+            <div class="sidebar-item" onclick="showPage('disclaimer'); closeSidebar();"><i class="fas fa-exclamation-circle"></i> Disclaimer</div>
+            <div class="sidebar-item" onclick="showPage('rateus'); closeSidebar();"><i class="fas fa-star"></i> Rate Us</div>
+            <div class="sidebar-item" onclick="auth.logout()" style="color:#ff4757; border-top:1px solid #333; margin-top:10px;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header hidden" id="mainHeader">
+        <a class="logo" href="#" onclick="toggleSidebar(); return false;">
+            <i class="fas fa-bars" style="margin-right:10px"></i>
+            <span>ViralLoop</span>
+        </a>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div id="themeToggleBtn" onclick="toggleTheme()" style="cursor:pointer;font-size:1.3rem;color:var(--gold);">
+                <i class="fas fa-moon"></i>
+            </div>
+            <div class="notification-bell" onclick="toggleNotifications()">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="notifBadge">0</span>
+            </div>
+
+            <div class="stat" id="userIdPill" onclick="showPage('profile-page')" style="background:linear-gradient(45deg,var(--primary),#ff4757);cursor:pointer;font-size:0.8rem;">
+                <i class="fas fa-user"></i> <span id="headerUsername">User</span> <span id="headerUID" style="font-size:0.7rem;opacity:0.8"></span>
+            </div>
+            <div class="stat coins" onclick="showPage('earn')" id="coinsBadge">
+                <i class="fas fa-coins" style="margin-right:4px"></i><span id="nav-coins-amount">0</span>
+            </div>
+            <div class="admin-trigger" id="adminTriggerDot" style="display:none;" onclick="adminTrigger()" title="Admin Panel"></div>
+        </div>
+    </header>
+
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <span><i class="fas fa-bell"></i> Notifications</span>
+            <i class="fas fa-cog" style="cursor:pointer; color:var(--gold);" onclick="showNotificationSettings()" title="Notification Sound Settings"></i>
+        </div>
+        <div id="notificationList"><div style="padding:20px;color:var(--gray);text-align:center;">No notifications</div></div>
+    </div>
+
+    <!-- Platform Bar -->
+    <div class="platform-bar hidden" id="platformBar">
+        <div class="platform-btn active" id="pb-all" onclick="filterPlatform('all', this)">
+            <i class="fas fa-globe"></i> All
+        </div>
+        <div class="platform-btn" id="pb-youtube" onclick="filterPlatform('youtube', this)" style="background:#ff0000;color:#fff;border-color:#ff0000;">
+            <i class="fab fa-youtube"></i> YouTube
+        </div>
+        <div class="platform-btn" id="pb-tiktok" onclick="filterPlatform('tiktok', this)">
+            <i class="fab fa-tiktok"></i> TikTok
+        </div>
+        <div class="platform-btn" id="pb-facebook" onclick="filterPlatform('facebook', this)">
+            <i class="fab fa-facebook"></i> Facebook
+        </div>
+        <div class="platform-btn" id="pb-instagram" onclick="filterPlatform('instagram', this)">
+            <i class="fab fa-instagram"></i> Instagram
+        </div>
+        <div class="platform-btn" id="pb-rumble" onclick="filterPlatform('rumble', this)">
+            <i class="fas fa-video"></i> Rumble
+        </div>
+        <div class="platform-btn" id="pb-kick" onclick="filterPlatform('kick', this)">
+            <i class="fas fa-play"></i> Kick
+        </div>
+        <div class="platform-btn" id="pb-twitch" onclick="filterPlatform('twitch', this)">
+            <i class="fab fa-twitch"></i> Twitch
+        </div>
+        <div class="platform-btn" id="pb-x" onclick="filterPlatform('x', this)">
+            <i class="fab fa-twitter"></i> X / Twitter
+        </div>
+    </div>
+
+    <!-- Main Pages Container -->
+    <main id="app" class="main"></main>
+
+    <!-- Bottom Navigation -->
+    <div class="nav hidden" id="bottomNav">
+        <a href="#" class="nav-item active" id="nav-home" onclick="showPage('home'); return false;">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-mychannel" onclick="showPage('mychannel'); return false;">
+            <i class="fas fa-bullhorn"></i>
+            <span>My Campaigns</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-history" onclick="showPage('history'); return false;">
+            <i class="fas fa-history"></i>
+            <span>History</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-earn" onclick="showPage('earn'); return false;">
+            <i class="fas fa-coins"></i>
+            <span>Earn</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-leaderboard" onclick="showPage('leaderboard'); return false;">
+            <i class="fas fa-trophy"></i>
+            <span>Leaders</span>
+        </a>
+    </div>
+
+    <!-- Floating Action Button (New Campaign) -->
+    <div class="fab hidden" id="fabBtn" onclick="showPage('mychannel')">
+        <i class="fas fa-plus"></i>
+    </div>
+
+    <!-- Floating Chat Widget -->
+    <div class="chat-widget-btn hidden" id="chatWidgetBtn" onclick="toggleChatWidget()">
+        <i class="fas fa-comment-dots"></i>
+    </div>
+
+    <div class="chat-widget hidden" id="chatWidget">
+        <div class="chat-header">
+            <div><i class="fas fa-comments"></i> Global Live Chat</div>
+            <i class="fas fa-times" style="cursor:pointer;" onclick="toggleChatWidget()"></i>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+            <button onclick="sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <div class="hidden" id="fabCreate" onclick="openCampaignModal()" style="position:fixed;bottom:80px;right:20px;width:56px;height:56px;background:linear-gradient(45deg,var(--gold),#ffed4e);border-radius:50%;display:flex;justify-content:center;align-items:center;font-size:1.5rem;color:#000;box-shadow:0 5px 20px rgba(245,158,11,0.5);cursor:pointer;z-index:900;transition:transform 0.2s;" onmouseenter="this.style.transform='scale(1.1)'" onmouseleave="this.style.transform='scale(1)'">
+        <i class="fas fa-plus"></i>
+    </div>
+
+    <!-- ========== MODALS ========== -->
+
+    <!-- Auth Modal -->
+    <div class="admin-login-modal active" id="userAuthModal" style="z-index:20000;">
+        <div class="admin-login-box">
+            <h2 id="authTitle"><i class="fas fa-user-circle"></i> Welcome</h2>
+            <div style="text-align:center;margin-bottom:20px;">
+                <span style="color:var(--gray);font-size:0.9rem">Sign in to sync your coins &amp; campaigns</span>
+            </div>
+            <form id="authForm" onsubmit="handleAuthSubmit(event)">
+                <div id="nameFieldGroup" style="display:none;">
+                    <input class="admin-login-input" id="userNameInput" placeholder="Full Name" type="text">
+                </div>
+                <input class="admin-login-input" id="userEmailInput" placeholder="Email Address" required type="email">
+                <div style="position:relative;">
+                    <input class="admin-login-input" id="userPassInput" minlength="6" placeholder="Password (min 6 chars)" required type="password" style="padding-right:40px;width:100%;">
+                    <i class="fas fa-eye" id="togglePasswordIcon" onclick="togglePasswordVisibility()" style="position:absolute;right:15px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--gray);"></i>
+                </div>
+                <div id="forgotPasswordLink" style="text-align:right; margin-top:-5px; margin-bottom:15px; font-size:0.85rem;">
+                    <a href="#" onclick="openForgotPasswordModal()" style="color:var(--primary); text-decoration:none;">Forgot Password?</a>
+                </div>
+                <div id="authError" style="display:none;color:#f87171;margin-bottom:10px;font-size:0.9rem;"></div>
+                <button class="admin-login-btn" id="authBtn" type="submit">
+                    <i class="fas fa-sign-in-alt"></i> <span id="authBtnText">Login</span>
+                </button>
+            </form>
+            
+            <div style="display:flex; align-items:center; margin: 20px 0; color:var(--gray); font-size:0.9rem;">
+                <div style="flex:1; height:1px; background:var(--border);"></div>
+                <div style="padding:0 10px;">OR</div>
+                <div style="flex:1; height:1px; background:var(--border);"></div>
+            </div>
+            
+            <button onclick="handleGoogleLoginMock()" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--card-bg); color:var(--text-main); font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; font-size:1rem; transition:0.2s;">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px;" alt="Google"> Continue with Google
+            </button>
+            
+            <div style="margin-top:15px;color:var(--text-sub);font-size:0.9rem; text-align:center;">
+                <span id="authToggleText">New here?</span>
+                <span onclick="toggleAuthMode()" style="color:var(--primary);cursor:pointer;font-weight:bold;text-decoration:underline;margin-left:5px;">Create Account</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div class="admin-login-modal" id="forgotPasswordModal" style="z-index:20005; display:none;">
+        <div class="admin-login-box">
+            <h2 style="color:var(--primary)"><i class="fas fa-key"></i> Reset Password</h2>
+            <p style="color:var(--gray); font-size:0.9rem; margin-bottom:15px;" id="fpInstructionText">Enter your email and we'll send you a 6-digit recovery code.</p>
+            
+            <!-- Step 1: Email -->
+            <form id="fpEmailForm" onsubmit="handleFpEmailSubmit(event)">
+                <input class="admin-login-input" id="fpEmailInput" placeholder="Email Address" required type="email">
+                <div id="fpEmailError" style="display:none;color:#f87171;margin-bottom:10px;font-size:0.9rem;"></div>
+                <button class="admin-login-btn" type="submit">Send Code</button>
+                <div style="text-align:center; margin-top:10px;">
+                    <a href="#" onclick="closeForgotPasswordModal()" style="color:var(--gray); font-size:0.9rem;">Back to Login</a>
+                </div>
+            </form>
+
+            <!-- Step 2: Code & New Password -->
+            <form id="fpResetForm" onsubmit="handleFpResetSubmit(event)" style="display:none;">
+                <input class="admin-login-input" id="fpCodeInput" placeholder="6-digit Code" required type="text" maxlength="6">
+                <input class="admin-login-input" id="fpNewPassInput" placeholder="New Password (min 6 chars)" required type="password" minlength="6">
+                <div id="fpResetError" style="display:none;color:#f87171;margin-bottom:10px;font-size:0.9rem;"></div>
+                <button class="admin-login-btn" type="submit">Update Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Campaign Create Modal -->
+    <div class="campaign-modal" id="campaignModal">
+        <div class="campaign-header">
+            <h2 style="color:var(--gold)"><i class="fas fa-bullhorn"></i> Create Campaign</h2>
+            <button onclick="closeCampaignModal()" style="background:#333;color:#fff;padding:8px 15px;border:none;border-radius:8px;cursor:pointer"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="campaign-content">
+            <div class="form-step active" id="campaignStep1">
+                <h3 style="margin-bottom:20px">Choose Campaign Type</h3>
+                <div class="campaign-type" onclick="selectCampaignType('subscribe')">
+                    <h3 style="color:var(--primary)"><i class="fas fa-user-plus"></i> Subscribe / Follow</h3>
+                    <p style="color:var(--gray);margin-top:5px">10 coins per subscriber</p>
+                </div>
+                <div class="campaign-type" onclick="selectCampaignType('like')">
+                    <h3 style="color:var(--blue)"><i class="fas fa-thumbs-up"></i> Like / React</h3>
+                    <p style="color:var(--gray);margin-top:5px">5 coins per like</p>
+                </div>
+                <!-- View campaign removed for safety/Play Store compliance -->
+                <div class="campaign-type" onclick="selectCampaignType('comment')">
+                    <h3 style="color:var(--gold)"><i class="fas fa-comment"></i> Comment</h3>
+                    <p style="color:var(--gray);margin-top:5px">8 coins per comment</p>
+                </div>
+            </div>
+
+            <div class="form-step" id="campaignFormStep">
+                <div onclick="backToCampaignStep1()" style="cursor:pointer;margin-bottom:15px;color:var(--gray);display:flex;align-items:center;gap:5px;"><i class="fas fa-arrow-left"></i> Back</div>
+                <h3 id="campaignFormTitle" style="color:var(--primary);margin-bottom:20px"></h3>
+                <div class="form-group">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">Platform *</label>
+                    <select id="campaignPlatformSelect" class="form-input">
+                        <option value="">Loading platforms...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">Channel / Profile Name (Optional)</label>
+                    <input class="form-input" id="campaignName" placeholder="Enter name or leave blank" type="text" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">Target URL *</label>
+                    <input class="form-input" id="campaignUrl" placeholder="https://..." type="url" onblur="fetchUrlMetadata(this.value)">
+                </div>
+                <div id="campaignMetadataPreview" style="display:none; background:var(--card-solid); border:1px solid var(--border-main); border-radius:10px; padding:10px; margin-bottom:15px; align-items:center; gap:10px;">
+                    <img id="campaignPreviewImg" src="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;display:none;">
+                    <div style="font-weight:bold;color:var(--text-main);" id="campaignPreviewTitle"></div>
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">Quantity Needed (Min: 10) *</label>
+                    <input class="form-input" id="campaignCount" min="10" max="10000" placeholder="10" type="number" oninput="calcCampaignCost()">
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">Auto-Approve Time <i class="fas fa-info-circle" title="Submissions will be automatically approved after this time if you don't manually review them."></i></label>
+                    <select id="campaignAutoApprove" class="form-input">
+                        <option value="2">2 Hours</option>
+                        <option value="6">6 Hours</option>
+                        <option value="12">12 Hours</option>
+                        <option value="24" selected>24 Hours</option>
+                        <option value="48">48 Hours</option>
+                    </select>
+                    <p style="font-size:0.8rem;color:var(--gray);margin-top:5px;line-height:1.3;">اگر آپ سکرین شاٹ چیک کرنے میں مصروف ہوں تو اتنے گھنٹے بعد ٹاسک خود بخود منظور (Approve) ہو جائے گا۔</p>
+                </div>
+                <div class="calc-box">
+                    <div style="display:flex;justify-content:space-between;">
+                        <span>Coins per action:</span>
+                        <span id="campaignCoinsEach" style="color:var(--gold);font-weight:bold">10</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;">
+                        <span>Total Cost:</span>
+                        <span id="campaignTotalCost" style="color:var(--gold);font-weight:bold">0 coins</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;">
+                        <span>Your Balance:</span>
+                        <span id="campaignUserBalance" style="color:var(--green);font-weight:bold">0 coins</span>
+                    </div>
+                </div>
+                <button onclick="submitCampaignForm()" id="campaignSubmitBtn" style="width:100%;padding:15px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;margin-top:20px;font-size:1rem;">
+                    <i class="fas fa-rocket"></i> Start Campaign
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Overlay -->
+    <div class="upload-overlay" id="uploadOverlay">
+        <div class="upload-box">
+            <div id="uploadStep1">
+                <div style="font-size:3rem;color:var(--gold);margin-bottom:20px"><i class="fas fa-camera"></i></div>
+                <h3 style="margin-bottom:5px">Upload Screenshot</h3>
+                <p style="color:var(--gray);font-size:0.85rem;margin-bottom:15px">Show proof that you completed the task</p>
+                <div class="upload-area" onclick="document.getElementById('screenshotInput').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size:2.5rem;color:var(--gold);display:block;margin-bottom:10px;"></i>
+                    <p>Click to select screenshot</p>
+                    <p style="font-size:0.8rem;color:var(--gray);margin-top:5px">Max 2MB (JPG/PNG)</p>
+                </div>
+                <input accept="image/jpeg,image/png,image/jpg" id="screenshotInput" onchange="handleScreenshotSelect(this)" style="display:none" type="file">
+                <div id="uploadPreview" style="display:none;margin-bottom:15px;text-align:center;">
+                    <img id="previewImg" style="max-width:100%;max-height:180px;border-radius:10px;border:2px solid var(--gold)">
+                    <br>
+                    <button onclick="clearScreenshot()" style="margin-top:8px;background:var(--primary);color:#fff;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:0.85rem;"><i class="fas fa-trash"></i> Remove</button>
+                </div>
+                <button id="submitScreenshotBtn" onclick="submitScreenshot()" style="width:100%;padding:15px;background:var(--gold);color:#000;border:none;border-radius:10px;font-weight:bold;cursor:pointer;display:none;margin-bottom:10px;">
+                    <i class="fas fa-paper-plane"></i> Submit for Approval
+                </button>
+                <button onclick="closeUploadOverlay()" style="width:100%;padding:15px;background:#333;color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+            <div class="analyzing" id="uploadingStep">
+                <i class="fas fa-cog" style="font-size:3rem;color:var(--gold);animation:spin 1s linear infinite;display:block;margin-bottom:20px;"></i>
+                <h3 style="margin:0 0 10px">Uploading...</h3>
+                <p style="color:var(--gray);font-size:0.9rem">Please wait</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="payment-modal" id="paymentModal">
+        <div class="payment-header">
+            <h2 style="color:var(--gold)"><i class="fas fa-coins"></i> Buy Coins</h2>
+            <button onclick="closePaymentModal()" style="background:#333;color:#fff;padding:8px 15px;border:none;border-radius:8px;cursor:pointer"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="payment-content">
+            <div style="background:linear-gradient(45deg,var(--gold),#ffed4e);color:#000;padding:15px;border-radius:10px;margin-bottom:20px;text-align:center;font-weight:bold;">
+                <i class="fas fa-globe"></i> Pakistan & International Payments Supported
+            </div>
+            <div id="vipBannerContainer"></div>
+            <h3 style="margin-bottom:15px">Select Package:</h3>
+            <div id="packagesContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <div class="payment-package-card" onclick="selectPackage(3000, 1, this)">
+                    <div class="pkg-coins">3,000 Coins</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 1.00 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 280)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectPackage(15000, 5, this)">
+                    <div class="pkg-coins">15,000 Coins</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 5.00 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 1,400)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectPackage(60000, 20, this)">
+                    <div class="pkg-coins">60,000 Coins</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 20.00 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 5,600)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectPackage(150000, 50, this)">
+                    <div class="pkg-coins">150,000 Coins</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 50.00 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 14,000)</span></div>
+                </div>
+                <div class="payment-package-card" style="background:#222; border:1px solid #444;" onclick="showToast('Please contact Super Admin on WhatsApp for custom packages.', 'info')">
+                    <div class="pkg-coins" style="color:#ccc; font-size:1.2rem; margin-top:10px;"><i class="fas fa-handshake"></i></div>
+                    <div class="pkg-stats" style="font-weight:bold; color:#fff; font-size:1rem;">Custom Plan</div>
+                    <div class="pkg-price" style="font-size:0.9rem; color:var(--gray); margin-top:5px;">Contact Admin</div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom:15px; color: #ff0050;"><i class="fab fa-tiktok"></i> TikTok Direct Followers</h3>
+            <div id="directTiktokContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <div class="payment-package-card" onclick="selectDirectPackage('tiktok', '1000 Followers', 300, this)" style="border-color:#ff0050;">
+                    <div class="pkg-coins">1,000 Followers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 1.08 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 300)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectDirectPackage('tiktok', '2000 Followers', 600, this)" style="border-color:#ff0050;">
+                    <div class="pkg-coins">2,000 Followers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 2.16 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 600)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectDirectPackage('tiktok', '5000 Followers', 1500, this)" style="border-color:#ff0050;">
+                    <div class="pkg-coins">5,000 Followers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 5.40 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 1,500)</span></div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom:15px; color: #1877F2;"><i class="fab fa-facebook"></i> Facebook Direct Followers</h3>
+            <div id="directFacebookContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <div class="payment-package-card" onclick="selectDirectPackage('facebook', '500 Followers', 50, this)" style="border-color:#1877F2;">
+                    <div class="pkg-coins">500 Followers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 0.18 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 50)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectDirectPackage('facebook', '1000 Followers', 100, this)" style="border-color:#1877F2;">
+                    <div class="pkg-coins">1,000 Followers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 0.36 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 100)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectDirectPackage('facebook', '2000 Followers', 200, this)" style="border-color:#1877F2;">
+                    <div class="pkg-coins">2,000 Followers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 0.72 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 200)</span></div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom:15px; color: #FF0000;"><i class="fab fa-youtube"></i> YouTube Direct Subscribers</h3>
+            <div id="directYoutubeContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <div class="payment-package-card" onclick="selectDirectPackage('youtube', '500 Subscribers', 1500, this)" style="border-color:#FF0000;">
+                    <div class="pkg-coins">500 Subscribers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 5.40 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 1,500)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectDirectPackage('youtube', '1000 Subscribers', 3000, this)" style="border-color:#FF0000;">
+                    <div class="pkg-coins">1,000 Subscribers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 10.79 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 3,000)</span></div>
+                </div>
+                <div class="payment-package-card" onclick="selectDirectPackage('youtube', '2000 Subscribers', 6000, this)" style="border-color:#FF0000;">
+                    <div class="pkg-coins">2,000 Subscribers</div>
+                    <div class="pkg-price" style="margin-top:10px;">$ 21.58 <br><span style="font-size:0.85rem;color:var(--gray);">(Rs 6,000)</span></div>
+                </div>
+            </div>
+
+            <div class="payment-methods" id="paymentMethodsSection">
+                <h3 style="margin:0 0 20px">Select Payment Method:</h3>
+                <div class="payment-method" onclick="selectPaymentMethod('jazzcash')">
+                    <div style="display:flex;align-items:center;gap:15px">
+                        <i class="fas fa-mobile-alt" style="font-size:2rem;color:var(--primary)"></i>
+                        <div>
+                            <div style="font-weight:bold">EasyPaisa / JazzCash</div>
+                            <div style="font-size:0.85rem;color:var(--gray)">Direct Mobile Transfer (Pakistan)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="payment-method" onclick="selectPaymentMethod('binance')">
+                    <div style="display:flex;align-items:center;gap:15px">
+                        <i class="fab fa-bitcoin" style="font-size:2rem;color:var(--gold)"></i>
+                        <div>
+                            <div style="font-weight:bold">Binance / Crypto (USDT)</div>
+                            <div style="font-size:0.85rem;color:var(--gray)">International Transfer (0% Fee)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="payment-form" id="paymentFormSection">
+                <h3 style="color:var(--gold);margin-bottom:15px"><i class="fas fa-money-bill"></i> Payment Details</h3>
+                <div class="qr-display" id="paymentDetails"></div>
+                <div class="payment-instructions">
+                    <div style="color:var(--primary);font-weight:bold;margin-bottom:10px"><i class="fas fa-info-circle"></i> Important:</div>
+                    <ul>
+                        <li>Send exact amount shown above</li>
+                        <li>Save Transaction ID / Screenshot</li>
+                        <li>Upload payment proof below</li>
+                        <li>Wait for admin verification (24hr)</li>
+                    </ul>
+                </div>
+                <div class="form-group" id="directOrderUrlGroup" style="display:none;">
+                    <label style="display:block;margin-bottom:8px;color:var(--gold)">Target URL (Channel/Page Link) *</label>
+                    <input class="form-input" id="directTargetUrl" placeholder="Enter link for followers/subscribers" type="url">
+                </div>
+                <div class="form-group">
+                    <label style="display:block;margin-bottom:8px;color:var(--gold)">Transaction ID (TID / TxID) *</label>
+                    <input class="form-input" id="paymentTxId" placeholder="Enter the 11-digit TID or Binance TxID" type="text">
+                </div>
+                <div class="form-group">
+                    <label style="display:block;margin-bottom:8px;color:var(--gold)">Upload Payment Screenshot *</label>
+                    <div class="upload-area" onclick="document.getElementById('paymentScreenshot').click()" style="padding:20px">
+                        <i class="fas fa-camera" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+                        <p id="paymentFileLabel">Click to upload screenshot</p>
+                    </div>
+                    <input accept="image/jpeg,image/png,image/jpg" id="paymentScreenshot" onchange="handlePaymentScreenshot(this)" style="display:none" type="file">
+                    <div id="paymentPreview" style="display:none;margin-top:10px;text-align:center;">
+                        <img id="paymentPreviewImg" style="max-width:100%;max-height:150px;border-radius:10px;border:2px solid var(--gold)">
+                    </div>
+                </div>
+                <button onclick="submitPayment()" id="paymentSubmitBtn" class="action-btn btn-payment" style="margin-top:10px;">
+                    <i class="fas fa-check"></i> I Have Paid - Submit for Verification
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Viewer Modal -->
+    <div class="image-modal" id="imageModal" onclick="closeImageModal()">
+        <img id="imageModalImg" src="" alt="Screenshot">
+        <div class="image-modal-info" id="imageModalInfo" onclick="event.stopPropagation()">
+            <div style="display:flex;gap:10px;margin-top:10px;" id="imageModalActions"></div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

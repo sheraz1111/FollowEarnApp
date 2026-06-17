@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id               Int                @id @default(autoincrement())
+  name             String
+  email            String             @unique
+  password_hash    String
+  role             String             @default("user") // "user" or "admin"
+  coins_balance    Int                @default(0)
+  status           String             @default("active") // "active", "warned", "banned"
+  
+  // Advanced Features
+  isVIP            Boolean            @default(false)
+  referralCode     String?            @unique
+  referredById     Int?
+  
+  // Forgot Password
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
+  // Google Login
+  googleId         String?            @unique
+  
+  // New Analytics & Activity
+  lastSeen         DateTime?
+  totalTasksDone   Int                @default(0)
+  totalCampaignsRun Int               @default(0)
+  
+  // Daily Streak
+  currentStreak    Int                @default(0)
+  lastCheckInDate  DateTime?
+  lastMonthlyBonus DateTime?
+  
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  followRequests   FollowRequest[]
+  submissions      Submission[]
+  transactions     Transaction[]
+  activeTasks      ActiveTask[]
+  reportsFiled     Report[]           @relation("ReportsFiled")
+  reportsTargeting Report[]           @relation("ReportsTargeting")
+  chats            Chat[]
+  notifications    Notification[]
+  deposits         Deposit[]          @relation("UserDeposits")
+  directOrders     DirectOrder[]      @relation("UserDirectOrders")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Platform {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique // e.g., TikTok, Instagram, Facebook, YouTube, Rumble
+  createdAt      DateTime        @default(now())
+  followRequests FollowRequest[]
+}
+
+model FollowRequest {
+  id              Int          @id @default(autoincrement())
+  userId          Int
+  platformId      Int
+  target_link     String
+  reward_coins    Int
+  slots_remaining Int
+  total_slots     Int          @default(0)
+  auto_approve_hours Int       @default(24)
+  type            String       @default("subscribe") // "subscribe", "like", "view"
+  status          String       @default("active") // "active", "completed", "cancelled"
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User         @relation(fields: [userId], references: [id])
+  platform        Platform     @relation(fields: [platformId], references: [id])
+  submissions     Submission[]
+  activeTasks     ActiveTask[]
+}
+
+model Submission {
+  id             Int             @id @default(autoincrement())
+  requestId      Int
+  userId         Int
+  screenshot_url String
+  status         String          @default("pending") // "pending", "approved", "rejected"
+  reviewed_by    Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  request        FollowRequest   @relation(fields: [requestId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  transactions   Transaction[]
+}
+
+model Transaction {
+  id                    Int         @id @default(autoincrement())
+  userId                Int
+  type                  String      // "earn", "spend"
+  amount                Int
+  related_submission_id Int?
+  timestamp             DateTime    @default(now())
+  user                  User        @relation(fields: [userId], references: [id])
+  submission            Submission? @relation(fields: [related_submission_id], references: [id])
+}
+
+model Chat {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  message   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Report {
+  id             Int      @id @default(autoincrement())
+  reporterId     Int
+  targetUserId   Int
+  submissionId   Int?
+  reason         String
+  status         String   @default("pending") // "pending", "resolved"
+  createdAt      DateTime @default(now())
+  reporter       User     @relation("ReportsFiled", fields: [reporterId], references: [id])
+  targetUser     User     @relation("ReportsTargeting", fields: [targetUserId], references: [id])
+}
+
+model ActiveTask {
+  id         Int           @id @default(autoincrement())
+  userId     Int
+  requestId  Int
+  startTime  DateTime      @default(now())
+  user       User          @relation(fields: [userId], references: [id])
+  request    FollowRequest @relation(fields: [requestId], references: [id])
+}
+
+model Deposit {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Int      // Coins to add
+  price     Float    // Real money price paid
+  method    String   // "jazzcash" or "binance"
+  txId      String   // Transaction ID
+  proofImg  String?  // Screenshot URL
+  status    String   @default("pending") // pending, approved, rejected
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation("UserDeposits", fields: [userId], references: [id])
+}
+
+model DirectOrder {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  platform  String   // "youtube", "facebook", "tiktok"
+  package   String   // "500 Subs", "1000 Followers"
+  price     Float    // Real money price paid
+  method    String   // "jazzcash" or "binance"
+  txId      String   // Transaction ID
+  proofImg  String?  // Screenshot URL
+  targetUrl String   // Channel or profile link
+  status    String   @default("pending") // pending, completed, rejected
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation("UserDirectOrders", fields: [userId], references: [id])
+}
