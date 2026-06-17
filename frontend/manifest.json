@@ -1,0 +1,17 @@
+{
+  "name": "ViralEarn",
+  "short_name": "ViralEarn",
+  "description": "Earn coins by completing social tasks.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
