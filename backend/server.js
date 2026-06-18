@@ -348,8 +348,36 @@ app.get('/api/admin/stats', authenticate, async (req, res) => {
 
 // --- PLATFORMS ---
 app.get('/api/platforms', async (req, res) => {
-    const platforms = await prisma.platform.findMany();
-    res.json(platforms);
+    try {
+        let platforms = await prisma.platform.findMany();
+        
+        // Auto-seed if empty
+        if (platforms.length === 0) {
+            console.log("No platforms found. Auto-seeding platforms...");
+            const defaultPlatforms = [
+                { name: 'YouTube', type: 'follow' },
+                { name: 'YouTube', type: 'like' },
+                { name: 'YouTube', type: 'comment' },
+                { name: 'TikTok', type: 'follow' },
+                { name: 'TikTok', type: 'like' },
+                { name: 'TikTok', type: 'comment' },
+                { name: 'Instagram', type: 'follow' },
+                { name: 'Instagram', type: 'like' },
+                { name: 'Facebook', type: 'follow' },
+                { name: 'Rumble', type: 'follow' }
+            ];
+            
+            for (const p of defaultPlatforms) {
+                await prisma.platform.create({ data: p });
+            }
+            platforms = await prisma.platform.findMany();
+        }
+        
+        res.json(platforms);
+    } catch (e) {
+        console.error("Error fetching platforms:", e);
+        res.status(500).json({ error: "Failed to fetch platforms" });
+    }
 });
 
 // --- FOLLOW REQUESTS ---
