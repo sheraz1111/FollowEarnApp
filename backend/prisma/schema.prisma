@@ -33,6 +33,9 @@ model User {
   totalTasksDone   Int                @default(0)
   totalCampaignsRun Int               @default(0)
   
+  // Voice Announcements
+  lastVoicePlayedAt DateTime?
+  
   // Daily Streak
   currentStreak    Int                @default(0)
   lastCheckInDate  DateTime?
@@ -169,4 +172,16 @@ model DirectOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation("UserDirectOrders", fields: [userId], references: [id])
+}
+
+model SystemConfig {
+  id              Int      @id @default(1)
+  popupImageUrl   String?
+  popupText       String?
+  isPopupEnabled  Boolean  @default(false)
+  
+  voiceNoteUrl    String?
+  voiceNoteDate   DateTime?
+  
+  updatedAt       DateTime @updatedAt
 }

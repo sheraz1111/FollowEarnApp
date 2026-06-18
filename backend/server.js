@@ -9,6 +9,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import { OAuth2Client } from 'google-auth-library';
 
 dotenv.config();
@@ -20,7 +21,7 @@ const app = express();
 const prisma = new PrismaClient();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Ensure uploads directory exists
@@ -76,35 +77,141 @@ app.post('/api/register', async (req, res) => {
         }
 
         const user = await prisma.user.create({
-            data: { name, email, password_hash, role, coins_balance: 50, referralCode: myReferralCode, referredById }
+            data: { name, email, password_hash, role, coins_balance: 50, referralCode: myReferralCode, referredById, lastSeen: new Date() }
         });
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance } });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
     } catch (err) {
         res.status(400).json({ error: 'Email already exists or invalid data' });
     }
 });
 
 app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
-    let user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    // Auto-upgrade admin
-    if (email.toLowerCase() === 'poetry060@gmail.com' && user.role !== 'admin') {
-        user = await prisma.user.update({
-            where: { id: user.id },
-            data: { role: 'admin' }
-        });
-    }
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password required' });
+        }
+        let user = await prisma.user.findUnique({ where: { email } });
+        if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        // Auto-upgrade admin
+        if (email.toLowerCase() === 'poetry060@gmail.com' && user.role !== 'admin') {
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: { role: 'admin' }
+            });
+        }
 
-    if (user.status === 'banned') {
-        return res.status(403).json({ error: 'Account banned' });
+        if (user.status === 'banned') {
+            return res.status(403).json({ error: 'Account banned' });
+        }
+        
+        // Update lastSeen
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { lastSeen: new Date() }
+        });
+
+        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+    } catch (e) {
+        console.error('Login error:', e);
+        res.status(500).json({ error: 'Internal server error during login.' });
     }
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-    res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance } });
+});
+
+app.post('/api/google-login', async (req, res) => {
+    const { token: googleJwt } = req.body;
+    // In a real app, verify the JWT with google-auth-library
+    // For now, we mock parsing the payload
+    try {
+        const payloadStr = Buffer.from(googleJwt.split('.')[1], 'base64').toString();
+        const payload = JSON.parse(payloadStr);
+        const { email, name, sub: googleId } = payload;
+        
+        let user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    name,
+                    email,
+                    password_hash: await bcrypt.hash(Math.random().toString(36), 10), // Random placeholder
+                    googleId,
+                    lastSeen: new Date()
+                }
+            });
+        } else {
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { lastSeen: new Date() }
+            });
+        }
+        
+        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+    } catch (e) {
+        res.status(400).json({ error: 'Invalid Google token' });
+    }
+});
+
+// Config Endpoints
+app.get('/api/config', async (req, res) => {
+    try {
+        let config = await prisma.systemConfig.findUnique({ where: { id: 1 } });
+        if (!config) {
+            config = await prisma.systemConfig.create({ data: {} });
+        }
+        res.json(config);
+    } catch (e) {
+        console.error('Config get error:', e);
+        res.json({ popupImageUrl: null, popupText: null, isPopupEnabled: false }); // Fallback
+    }
+});
+
+app.post('/api/admin/config', authenticate, isAdmin, async (req, res) => {
+    try {
+        const { popupImageUrl, popupText, isPopupEnabled } = req.body;
+        const config = await prisma.systemConfig.upsert({
+            where: { id: 1 },
+            update: { popupImageUrl, popupText, isPopupEnabled },
+            create: { popupImageUrl, popupText, isPopupEnabled }
+        });
+        res.json({ message: 'Config updated', config });
+    } catch (e) {
+        console.error('Config update error:', e);
+        res.status(500).json({ error: 'Internal server error updating config.' });
+    }
+});
+
+app.post('/api/admin/voice', authenticate, isAdmin, async (req, res) => {
+    try {
+        const { voiceNoteUrl } = req.body;
+        const config = await prisma.systemConfig.upsert({
+            where: { id: 1 },
+            update: { voiceNoteUrl, voiceNoteDate: new Date() },
+            create: { voiceNoteUrl, voiceNoteDate: new Date() }
+        });
+        res.json({ message: 'Voice Note updated', config });
+    } catch (e) {
+        console.error('Voice update error:', e);
+        res.status(500).json({ error: 'Internal server error updating voice note.' });
+    }
+});
+
+app.post('/api/users/play-voice', authenticate, async (req, res) => {
+    try {
+        await prisma.user.update({
+            where: { id: req.user.id },
+            data: { lastVoicePlayedAt: new Date() }
+        });
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Play voice error:', e);
+        res.status(500).json({ error: 'Internal server error updating voice play status.' });
+    }
 });
 
 // Forgot Password Flow
@@ -189,7 +296,7 @@ app.post('/api/auth/google', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance } });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
     } catch(err) {
         console.error("Google Auth Error:", err);
         res.status(400).json({ error: 'Google Authentication failed' });
@@ -198,7 +305,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 app.get('/api/me', authenticate, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, referralCode: user.referralCode, isVIP: user.isVIP } });
+    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, referralCode: user.referralCode, isVIP: user.isVIP, lastVoicePlayedAt: user.lastVoicePlayedAt } });
 });
 
 app.get('/api/admin/direct-orders', authenticate, async (req, res) => {
@@ -762,6 +869,50 @@ app.patch('/api/admin/deposits/:id/approve', authenticate, async (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/admin/broadcast', authenticate, isAdmin, async (req, res) => {
+    try {
+        const { subject, message } = req.body;
+        if (!subject || !message) return res.status(400).json({ error: 'Subject and message are required' });
+
+        const users = await prisma.user.findMany({
+            where: { status: 'active', role: 'user' },
+            select: { email: true }
+        });
+
+        const emails = users.map(u => u.email).filter(e => e);
+
+        if (emails.length === 0) {
+            return res.status(400).json({ error: 'No active users found to send email to.' });
+        }
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            bcc: emails,
+            subject: subject,
+            html: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                      <h2 style="color: #ff4757;">Admin Broadcast</h2>
+                      <p>${message.replace(/\n/g, '<br>')}</p>
+                      <br>
+                      <p style="font-size: 0.8rem; color: #777;">This is an automated message from the Follow & Earn Admin.</p>
+                   </div>`
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, count: emails.length });
+    } catch (error) {
+        console.error('Email Broadcast Error:', error);
+        res.status(500).json({ error: 'Failed to send broadcast. Check email credentials in .env' });
+    }
+});
+
 app.patch('/api/admin/deposits/:id/reject', authenticate, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
     const depositId = parseInt(req.params.id);
@@ -861,12 +1012,12 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 app.get('/api/chat', authenticate, async (req, res) => {
-    const messages = await prisma.chat.findMany({
+    let messages = await prisma.chat.findMany({
         take: 50,
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
         include: { user: { select: { id: true, name: true, role: true, isVIP: true } } }
     });
-    res.json(messages);
+    res.json(messages.reverse());
 });
 
 app.post('/api/chat', authenticate, async (req, res) => {

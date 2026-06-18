@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViralLoop - Play, Earn, and Grow</title>
+    <meta name="description" content="ViralLoop is the ultimate platform to earn coins by engaging with content, completing campaigns, and watching ads. Download the app or use the web version now!">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0b0f19;
+            --bg-card: #151b2b;
+            --primary: #f59e0b; /* Gold */
+            --primary-light: #fbbf24;
+            --text-main: #f8f9fa;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(245, 158, 11, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(245, 158, 11, 0.08), transparent 25%);
+        }
+
+        .container {
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            padding: 40px 20px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .logo-container {
+            margin-bottom: 20px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .logo-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            text-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+
+        p.subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .buttons-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            padding: 16px 24px;
+            border-radius: 15px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .download-btn i {
+            font-size: 1.4rem;
+        }
+
+        /* Web / Laptop Button */
+        .btn-web {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 2px solid var(--primary);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .btn-web:hover {
+            background: rgba(245, 158, 11, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.2);
+        }
+
+        /* iPhone Button */
+        .btn-ios {
+            background: linear-gradient(135deg, #2c3e50, #000000);
+            color: white;
+            border: 2px solid #555;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .btn-ios:hover {
+            transform: translateY(-3px);
+            border-color: #888;
+            box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Android Button */
+        .btn-android {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .btn-android:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+            background: linear-gradient(135deg, #34d399, #10b981);
+        }
+
+        /* Shine Effect */
+        .download-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            z-index: -1;
+            transition: all 0.7s ease;
+        }
+        .download-btn:hover::after {
+            left: 200%;
+        }
+
+        .footer {
+            margin-top: 50px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            h1 { font-size: 2rem; }
+            .download-btn { padding: 14px 20px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo-container">
+            <i class="fas fa-bolt logo-icon"></i>
+        </div>
+        
+        <h1>ViralLoop</h1>
+        <p class="subtitle">Complete campaigns, earn coins, and grow your social media presence. Choose your platform below to get started!</p>
+
+        <div class="buttons-wrapper">
+            <!-- Web / Laptop Button -->
+            <a href="https://followearnapp.vercel.app/" class="download-btn btn-web" target="_blank">
+                <i class="fas fa-laptop"></i>
+                For Web / Laptop Users
+            </a>
+
+            <!-- iPhone Button -->
+            <a href="https://followearnapp.vercel.app/" class="download-btn btn-ios" target="_blank">
+                <i class="fab fa-apple"></i>
+                For iPhone Users
+            </a>
+
+            <!-- Android Button -->
+            <!-- Note: User will replace '#' with the actual direct APK link later -->
+            <a href="#" class="download-btn btn-android" id="androidBtn">
+                <i class="fab fa-android"></i>
+                Download For Android
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 ViralLoop. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        // Simple script to handle Android click until link is provided
+        document.getElementById('androidBtn').addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if(href === '#' || href === '') {
+                e.preventDefault();
+                alert('Android App is coming soon! Please use the Web version for now.');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -15,7 +15,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=3">
     
     <!-- Google Translate Script -->
     <script type="text/javascript">
@@ -56,6 +56,9 @@
         .goog-te-banner-frame.skiptranslate { display: none !important; }
         #goog-gt-tt { display: none !important; }
     </style>
+    <meta name="monetag" content="a15e004c91fa347f1c9385df307e6a16">
+    <!-- Monetag Push Notification -->
+    <script src="https://5gvci.com/act/files/tag.min.js?z=11160140" data-cfasync="false" async></script>
 </head>
 <body>
     <!-- Toast Container -->
@@ -125,6 +128,7 @@
             <div class="sidebar-item" onclick="showPage('privacy'); closeSidebar();"><i class="fas fa-user-lock"></i> Privacy Policy</div>
             <div class="sidebar-item" onclick="showPage('disclaimer'); closeSidebar();"><i class="fas fa-exclamation-circle"></i> Disclaimer</div>
             <div class="sidebar-item" onclick="showPage('rateus'); closeSidebar();"><i class="fas fa-star"></i> Rate Us</div>
+            <div class="sidebar-item" onclick="toggleChatWidget(); closeSidebar();"><i class="fas fa-comment-dots"></i> Global Live Chat</div>
             <div class="sidebar-item" onclick="auth.logout()" style="color:#ff4757; border-top:1px solid #333; margin-top:10px;">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </div>
@@ -145,11 +149,17 @@
                 <i class="fas fa-bell"></i>
                 <span class="notification-badge" id="notifBadge">0</span>
             </div>
-
-            <div class="stat" id="userIdPill" onclick="showPage('profile-page')" style="background:linear-gradient(45deg,var(--primary),#ff4757);cursor:pointer;font-size:0.8rem;">
-                <i class="fas fa-user"></i> <span id="headerUsername">User</span> <span id="headerUID" style="font-size:0.7rem;opacity:0.8"></span>
+            
+            <div class="notification-bell" id="voiceAnnounceBtn" onclick="playVoiceAnnouncement()" style="display:none; margin-left:10px;">
+                <i class="fas fa-volume-up"></i>
+                <span class="notification-badge" id="voiceBadge" style="background:#ff4757;"></span>
             </div>
-            <div class="stat coins" onclick="showPage('earn')" id="coinsBadge">
+
+            <div class="stat" id="userIdPill" onclick="showPage('profile-page')" style="background:linear-gradient(45deg,var(--primary),#ff4757);cursor:pointer;font-size:0.8rem;max-width:110px;">
+                <i class="fas fa-user"></i> <span id="headerUsername" style="max-width:60px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom;">User</span>
+                <span id="headerUID" style="display:none;"></span>
+            </div>
+            <div class="stat coins" onclick="showPage('earn')" id="coinsBadge" style="flex-shrink:0;">
                 <i class="fas fa-coins" style="margin-right:4px"></i><span id="nav-coins-amount">0</span>
             </div>
             <div class="admin-trigger" id="adminTriggerDot" style="display:none;" onclick="adminTrigger()" title="Admin Panel"></div>
@@ -229,10 +239,6 @@
     </div>
 
     <!-- Floating Chat Widget -->
-    <div class="chat-widget-btn hidden" id="chatWidgetBtn" onclick="toggleChatWidget()">
-        <i class="fas fa-comment-dots"></i>
-    </div>
-
     <div class="chat-widget hidden" id="chatWidget">
         <div class="chat-header">
             <div><i class="fas fa-comments"></i> Global Live Chat</div>
@@ -370,7 +376,15 @@
                     <input class="form-input" id="campaignCount" min="10" max="10000" placeholder="10" type="number" oninput="calcCampaignCost()">
                 </div>
                 <div class="form-group">
-                    <label style="color:var(--gold);display:block;margin-bottom:6px">Auto-Approve Time <i class="fas fa-info-circle" title="Submissions will be automatically approved after this time if you don't manually review them."></i></label>
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">
+                        Auto-Approve Time <i class="fas fa-info-circle"></i>
+                        <div style="font-size:0.75rem; color:var(--gray); margin-top:2px;">
+                            If you don't manually review them, tasks auto-approve after this time.
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--gold); margin-top:2px;">
+                            Agar aap screenshots check nahi karte, toh itne ghante baad task khud approve ho jayega.
+                        </div>
+                    </label>
                     <select id="campaignAutoApprove" class="form-input">
                         <option value="2">2 Hours</option>
                         <option value="6">6 Hours</option>
@@ -586,8 +600,8 @@
         </div>
     </div>
 
-    <script src="api.js"></script>
-    <script src="app.js"></script>
+    <script src="api.js?v=3"></script>
+    <script src="app.js?v=3"></script>
     
     <!-- iOS Install Prompt -->
     <div id="ios-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 10000; color: white; text-align: center; font-family: 'Inter', sans-serif;">
@@ -610,5 +624,24 @@
             document.getElementById('ios-prompt').style.display = 'block';
         }
     </script>
+
+    <!-- Global Startup Popup Modal -->
+    <div class="global-popup-modal" id="globalPopupModal">
+        <div class="modal-content animate-fade" style="padding:0; max-width:90%; width:400px; background:transparent; border:none; position:relative;">
+            <button class="close-btn" onclick="document.getElementById('globalPopupModal').classList.remove('active')" style="position:absolute; top:-15px; right:-15px; background:var(--card-bg); border-radius:50%; width:40px; height:40px; border:2px solid var(--gold); color:var(--text-main); font-weight:bold; z-index:10; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
+            <div style="background:var(--card-bg); border-radius:15px; overflow:hidden; border:2px solid var(--gold); box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                <img id="globalPopupImg" src="" style="width:100%; max-height:70vh; display:block; object-fit:contain;" alt="Announcement">
+                <div id="globalPopupTextContainer" style="padding:15px; text-align:center; display:none;">
+                    <p id="globalPopupText" style="color:var(--text-main); font-weight:500; line-height:1.4;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden Global Audio Player -->
+    <audio id="globalVoicePlayer" style="display:none;"></audio>
+    
+    <!-- Monetag In-Page Push (Banner) -->
+    <script>(function(s){s.dataset.zone='11160142',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
 </body>
 </html>

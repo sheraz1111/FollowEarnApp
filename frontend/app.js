@@ -435,7 +435,9 @@ window.showNotificationSettings = function() {
     modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
     modal.innerHTML = `
         <div style="background:var(--card-bg);width:90%;max-width:350px;border-radius:15px;padding:20px;border:1px solid var(--gold);">
-            <h3 style="color:var(--gold);margin-bottom:15px;"><i class="fas fa-bell"></i> Notification Sound</h3>
+            <h3 style="color:var(--gold);margin-bottom:10px;"><i class="fas fa-bell"></i> Notification Sound</h3>
+            <p style="font-size:0.8rem; color:var(--gray); margin-bottom:5px; line-height:1.4;">If you want to know when your campaign completes, select a tone here.</p>
+            <p style="font-size:0.8rem; color:var(--gold); margin-bottom:15px; line-height:1.4;">Agar aap chahte hain ki campaign puri hone par aapko pata chale, toh yahan se tone select karein.</p>
             <select id="soundSelect" style="width:100%;padding:10px;background:#222;color:#fff;border:1px solid #444;border-radius:8px;margin-bottom:15px;">
                 <option value="tone1" ${current==='tone1'?'selected':''}>Tone 1 (Classic Bell)</option>
                 <option value="tone2" ${current==='tone2'?'selected':''}>Tone 2 (Soft Chime)</option>
@@ -1285,6 +1287,9 @@ async function buildStorePage() {
 
 window.claimDailyBonus = async function() {
     try {
+        // Monetag Direct Link Ad
+        window.open('https://omg10.com/4/11160137', '_blank');
+
         const data = await api.request('/users/daily-bonus', { method: 'POST' });
         if (data.success) {
             state.user.coins = data.coins;
@@ -1566,6 +1571,9 @@ async function buildSuperAdminPage() {
             <button class="tab" onclick="loadSuperAdminTab('reports', this)"><i class="fas fa-flag"></i> Reports</button>
             <button class="tab" onclick="loadSuperAdminTab('payments', this)"><i class="fas fa-money-bill"></i> Payments</button>
             <button class="tab" onclick="loadSuperAdminTab('directOrders', this)"><i class="fas fa-shopping-cart"></i> Direct Orders</button>
+            <button class="tab" onclick="loadSuperAdminTab('popupConfig', this)"><i class="fas fa-image"></i> Popup Config</button>
+            <button class="tab" onclick="loadSuperAdminTab('voiceConfig', this)"><i class="fas fa-microphone"></i> Voice Config</button>
+            <button class="tab" style="background:var(--primary);color:#fff;" onclick="loadSuperAdminTab('broadcast', this)"><i class="fas fa-envelope"></i> Broadcast Message</button>
         </div>
         <div id="superAdminContent">
             <div class="empty-state"><div class="loading-spinner" style="width:30px;height:30px;margin:0 auto;"></div></div>
@@ -1608,6 +1616,71 @@ window.loadSuperAdminTab = async function(tab, btn) {
         if (tab === 'pending') {
             const data = await api.submissions.getPending();
             cont.innerHTML = buildAdminSubmissionGrid(data, 'super-admin');
+        } else if (tab === 'popupConfig') {
+            const config = await api.request('/config', { method: 'GET' });
+            cont.innerHTML = `
+                <h3 style="margin-bottom:15px;"><i class="fas fa-image"></i> Startup Popup Banner Settings</h3>
+                <div style="background:var(--card-bg); padding:20px; border-radius:12px; border:1px solid var(--border);">
+                    <div class="form-group">
+                        <label style="color:var(--gold); display:block; margin-bottom:5px;">Upload Popup Image (Gallery)</label>
+                        <input type="file" id="adminPopupImageFile" accept="image/*" class="form-input" style="padding:10px;">
+                        <img id="adminPopupImagePreview" src="${config.popupImageUrl || ''}" style="max-width:100%; margin-top:10px; border-radius:8px; display:${config.popupImageUrl ? 'block' : 'none'};">
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label style="color:var(--gold); display:block; margin-bottom:5px;">Popup Text (Optional)</label>
+                        <input type="text" id="adminPopupText" class="form-input" placeholder="Welcome to Viral Loop!" value="${config.popupText || ''}">
+                    </div>
+                    <div class="form-group" style="margin-top:15px; display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" id="adminPopupEnabled" ${config.isPopupEnabled ? 'checked' : ''} style="width:18px;height:18px;">
+                        <label style="color:var(--gold);">Enable Popup on Startup?</label>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:20px;">
+                        <button onclick="saveAdminPopupConfig()" style="flex:1; padding:12px; background:var(--gold); color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer;"><i class="fas fa-save"></i> Save Settings</button>
+                        <button onclick="deleteAdminPopupConfig()" style="padding:12px; background:#ff4757; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;" title="Delete Banner"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('adminPopupImageFile').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const img = document.getElementById('adminPopupImagePreview');
+                        img.src = evt.target.result;
+                        img.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        } else if (tab === 'voiceConfig') {
+            const config = await api.request('/config', { method: 'GET' });
+            cont.innerHTML = `
+                <h3 style="margin-bottom:15px;"><i class="fas fa-microphone"></i> Global Voice Announcement</h3>
+                <div style="background:var(--card-bg); padding:20px; border-radius:12px; border:1px solid var(--border);">
+                    <p style="color:var(--gray); margin-bottom:15px; font-size:0.9rem;">Upload a voice note. It will be sent to all users and will expire in 5 days automatically.</p>
+                    <div class="form-group">
+                        <label style="color:var(--gold); display:block; margin-bottom:5px;">Upload Audio File</label>
+                        <input type="file" id="adminVoiceFile" accept="audio/*" class="form-input" style="padding:10px;">
+                        <audio id="adminVoicePreview" controls style="width:100%; margin-top:15px; display:${config.voiceNoteUrl ? 'block' : 'none'};" src="${config.voiceNoteUrl || ''}"></audio>
+                    </div>
+                    <button onclick="saveAdminVoiceConfig()" style="margin-top:20px; width:100%; padding:12px; background:var(--gold); color:#000; border:none; border-radius:8px; font-weight:bold; cursor:pointer;"><i class="fas fa-paper-plane"></i> Send Voice Announcement</button>
+                </div>
+            `;
+            
+            document.getElementById('adminVoiceFile').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const audio = document.getElementById('adminVoicePreview');
+                        audio.src = evt.target.result;
+                        audio.style.display = 'block';
+                        audio.setAttribute('data-base64', evt.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
         } else if (tab === 'users') {
             const users = await api.admin.users();
             cont.innerHTML = buildSuperAdminUsersList(users);
@@ -1658,6 +1731,24 @@ window.loadSuperAdminTab = async function(tab, btn) {
                     </div>
                 `).join('');
             }
+        } else if (tab === 'broadcast') {
+            cont.innerHTML = `
+                <h3 style="margin-bottom:15px;"><i class="fas fa-envelope"></i> Broadcast Message</h3>
+                <div style="background:var(--card-bg); padding:20px; border-radius:12px; border:1px solid var(--border);">
+                    <p style="color:var(--gray); margin-bottom:15px;">Send an email directly to all registered users from the app server.</p>
+                    <div class="form-group">
+                        <label style="color:var(--gold); display:block; margin-bottom:5px;">Subject</label>
+                        <input type="text" id="adminBroadcastSubject" class="form-input" placeholder="Enter email subject" required>
+                    </div>
+                    <div class="form-group" style="margin-top:15px;">
+                        <label style="color:var(--gold); display:block; margin-bottom:5px;">Message</label>
+                        <textarea id="adminBroadcastMessage" class="form-input" rows="6" placeholder="Type your message here..." required></textarea>
+                    </div>
+                    <button onclick="sendAdminBroadcast()" style="width:100%;background:var(--primary);color:#fff;border:none;padding:15px;border-radius:10px;cursor:pointer;font-weight:bold;margin-top:20px;font-size:1rem;">
+                        <i class="fas fa-paper-plane"></i> Send to All Users
+                    </button>
+                </div>
+            `;
         } else if (tab === 'payments') {
             const deposits = await api.admin.deposits();
             if (deposits.length === 0) {
@@ -1714,6 +1805,17 @@ window.adminProcessDirectOrder = async function(id, status) {
 function buildSuperAdminUsersList(users) {
     let html = `
         <h3 style="margin-bottom:15px;"><i class="fas fa-users"></i> All Registered Users</h3>
+        
+        <!-- Bulk Email System -->
+        <div style="background:var(--card-solid); padding:15px; border-radius:10px; margin-bottom:15px; border:1px solid var(--border); display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px; margin-right:15px;">
+                <input type="checkbox" id="selectAllAdminUsers" style="width:18px;height:18px;" onchange="toggleAllAdminUserCheckboxes(this)">
+                <label for="selectAllAdminUsers" style="font-weight:bold; cursor:pointer;">Select All Users</label>
+            </div>
+            <button onclick="copySelectedAdminEmails()" style="background:var(--primary); color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;"><i class="fas fa-copy"></i> Copy Emails</button>
+            <button onclick="sendBulkEmailAdmin()" style="background:#ff4757; color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;"><i class="fas fa-envelope"></i> Send Email (BCC)</button>
+        </div>
+
         <input type="text" id="superAdminSearch" placeholder="Search by email or name..." style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--card-bg);color:var(--text-main);margin-bottom:15px;" oninput="filterSuperAdminUsers()">
         <div id="superAdminUsersList">
     `;
@@ -1727,17 +1829,20 @@ function buildSuperAdminUsersList(users) {
 
         html += `
             <div class="user-row" data-search="${u.name.toLowerCase()} ${u.email.toLowerCase()}" style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); padding:15px; border-radius:10px; margin-bottom:10px; border-left: 4px solid var(--primary);">
-                <div style="flex:1;">
-                    <div style="font-weight:bold; display:flex; align-items:center; gap:8px;">
-                        ${u.name} <span style="color:var(--gray);font-size:0.8rem;">(UID: ${u.id})</span>
-                        ${isOnline ? '<span style="font-size:0.7rem;background:rgba(16,185,129,0.1);color:var(--green);padding:2px 6px;border-radius:10px;">Online</span>' : '<span style="font-size:0.7rem;background:rgba(255,255,255,0.1);color:var(--gray);padding:2px 6px;border-radius:10px;">Offline</span>'}
-                    </div>
-                    <div style="color:var(--gold);font-size:0.9rem; margin-top:2px;">${u.email}</div>
-                    <div style="display:flex; gap:15px; font-size:0.8rem; color:var(--text-sub); margin-top:8px;">
-                        <span><i class="fas fa-calendar-alt"></i> Joined: ${joinDate}</span>
-                        <span><i class="fas fa-bullhorn"></i> Campaigns: ${u.totalCampaignsRun || 0}</span>
-                        <span><i class="fas fa-check-square"></i> Tasks: ${u.totalTasksDone || 0}</span>
-                        <span><i class="fas fa-coins"></i> Coins: <b>${u.coins_balance}</b></span>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <input type="checkbox" class="admin-user-checkbox" value="${u.email}" style="width:20px; height:20px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; display:flex; align-items:center; gap:8px;">
+                            ${u.name} <span style="color:var(--gray);font-size:0.8rem;">(UID: ${u.id})</span>
+                            ${isOnline ? '<span style="font-size:0.7rem;background:rgba(16,185,129,0.1);color:var(--green);padding:2px 6px;border-radius:10px;">Online</span>' : '<span style="font-size:0.7rem;background:rgba(255,255,255,0.1);color:var(--gray);padding:2px 6px;border-radius:10px;">Offline</span>'}
+                        </div>
+                        <div style="color:var(--gold);font-size:0.9rem; margin-top:2px;">${u.email}</div>
+                        <div style="display:flex; gap:15px; font-size:0.8rem; color:var(--text-sub); margin-top:8px;">
+                            <span><i class="fas fa-calendar-alt"></i> Joined: ${joinDate}</span>
+                            <span><i class="fas fa-bullhorn"></i> Campaigns: ${u.totalCampaignsRun || 0}</span>
+                            <span><i class="fas fa-check-square"></i> Tasks: ${u.totalTasksDone || 0}</span>
+                            <span><i class="fas fa-coins"></i> Coins: <b>${u.coins_balance}</b></span>
+                        </div>
                     </div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1752,10 +1857,66 @@ function buildSuperAdminUsersList(users) {
 }
 
 window.filterSuperAdminUsers = function() {
-    const q = document.getElementById('superAdminSearch').value.toLowerCase();
-    document.querySelectorAll('.user-row').forEach(row => {
-        row.style.display = row.getAttribute('data-search').includes(q) ? 'flex' : 'none';
+    const term = document.getElementById('superAdminSearch').value.toLowerCase();
+    document.querySelectorAll('#superAdminUsersList .user-row').forEach(row => {
+        if (row.dataset.search.includes(term)) row.style.display = 'flex';
+        else row.style.display = 'none';
     });
+};
+
+window.toggleAllAdminUserCheckboxes = function(checkbox) {
+    document.querySelectorAll('.admin-user-checkbox').forEach(cb => {
+        if (cb.closest('.user-row').style.display !== 'none') {
+            cb.checked = checkbox.checked;
+        }
+    });
+};
+
+window.copySelectedAdminEmails = function() {
+    const checkboxes = document.querySelectorAll('.admin-user-checkbox:checked');
+    if (checkboxes.length === 0) return showToast('Please select at least one user.', 'error');
+    
+    const emails = Array.from(checkboxes).map(cb => cb.value).join(', ');
+    navigator.clipboard.writeText(emails).then(() => {
+        showToast(`Copied ${checkboxes.length} emails to clipboard!`, 'success');
+    }).catch(() => showToast('Failed to copy emails.', 'error'));
+};
+
+window.sendBulkEmailAdmin = function() {
+    const checkboxes = document.querySelectorAll('.admin-user-checkbox:checked');
+    if (checkboxes.length === 0) return showToast('Please select at least one user.', 'error');
+    
+    const emails = Array.from(checkboxes).map(cb => cb.value).join(',');
+    window.location.href = `mailto:?bcc=${emails}&subject=Update from ViralLoop Admin`;
+};
+
+window.sendAdminBroadcast = async function() {
+    const subject = document.getElementById('adminBroadcastSubject').value.trim();
+    const message = document.getElementById('adminBroadcastMessage').value.trim();
+    
+    if (!subject || !message) {
+        return showToast('Please enter both subject and message.', 'error');
+    }
+    
+    const btn = event.currentTarget;
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '<div class="loading-spinner"></div> Sending...';
+    btn.disabled = true;
+    
+    try {
+        const res = await api.request('/admin/broadcast', {
+            method: 'POST',
+            body: { subject, message }
+        });
+        showToast(`Success! Email sent to ${res.count} users.`, 'success');
+        document.getElementById('adminBroadcastSubject').value = '';
+        document.getElementById('adminBroadcastMessage').value = '';
+    } catch(e) {
+        showToast(e.message, 'error');
+    } finally {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+    }
 };
 
 window.promptAddCoins = async function(userId) {
@@ -1767,6 +1928,73 @@ window.promptAddCoins = async function(userId) {
         loadSuperAdminTab('users', document.querySelector('.tab.active'));
     } catch(e) {
         showToast(e.message, 'error');
+    }
+};
+
+window.saveAdminPopupConfig = async function() {
+    try {
+        const popupImageUrl = document.getElementById('adminPopupImagePreview').src;
+        const popupText = document.getElementById('adminPopupText').value;
+        const isPopupEnabled = document.getElementById('adminPopupEnabled').checked;
+        await api.request('/admin/config', {
+            method: 'POST',
+            body: JSON.stringify({ popupImageUrl, popupText, isPopupEnabled })
+        });
+        showToast('Popup Settings Saved!', 'success');
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
+};
+
+window.deleteAdminPopupConfig = async function() {
+    if(!confirm("Are you sure you want to delete the global popup?")) return;
+    try {
+        await api.request('/admin/config', {
+            method: 'POST',
+            body: JSON.stringify({ popupImageUrl: '', popupText: '', isPopupEnabled: false })
+        });
+        showToast('Popup Deleted Successfully!', 'success');
+        document.getElementById('adminPopupImagePreview').src = '';
+        document.getElementById('adminPopupImagePreview').style.display = 'none';
+        document.getElementById('adminPopupText').value = '';
+        document.getElementById('adminPopupEnabled').checked = false;
+        document.getElementById('adminPopupImageFile').value = '';
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
+};
+
+window.saveAdminVoiceConfig = async function() {
+    try {
+        const audio = document.getElementById('adminVoicePreview');
+        const voiceNoteUrl = audio.getAttribute('data-base64');
+        if (!voiceNoteUrl) {
+            showToast('Please select an audio file first.', 'error');
+            return;
+        }
+        await api.request('/admin/voice', {
+            method: 'POST',
+            body: JSON.stringify({ voiceNoteUrl })
+        });
+        showToast('Voice Announcement Sent!', 'success');
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
+};
+
+window.playVoiceAnnouncement = async function() {
+    const audio = document.getElementById('globalVoicePlayer');
+    if (audio.src) {
+        try {
+            await audio.play();
+            // Update UI to remove red dot
+            document.getElementById('voiceBadge').style.display = 'none';
+            // Call API to register the play
+            await api.request('/users/play-voice', { method: 'POST' });
+        } catch (e) {
+            console.error('Audio playback failed', e);
+            showToast('Unable to play audio. Tap to try again.', 'error');
+        }
     }
 };
 
@@ -1888,6 +2116,9 @@ function calcCampaignCost() {
 }
 async function submitCampaignForm() {
     const platformSelect = document.getElementById('campaignPlatformSelect');
+    if (!platformSelect || platformSelect.options.length === 0 || platformSelect.selectedIndex === -1) {
+        return showToast('No platform available. Please check your internet or contact Admin.', 'error');
+    }
     const platformId = platformSelect.value;
     const platformName = platformSelect.options[platformSelect.selectedIndex].text.toLowerCase();
     
@@ -2206,6 +2437,44 @@ async function initApp() {
     } else {
         document.getElementById('userAuthModal').classList.add('active');
     }
+
+    // Check for Global Popup and Voice Announcement
+    try {
+        const config = await api.request('/config', { method: 'GET' });
+        
+        // Popup
+        if (config && config.isPopupEnabled && config.popupImageUrl) {
+            document.getElementById('globalPopupImg').src = config.popupImageUrl;
+            if (config.popupText) {
+                document.getElementById('globalPopupText').innerText = config.popupText;
+                document.getElementById('globalPopupTextContainer').style.display = 'block';
+            }
+            document.getElementById('globalPopupModal').classList.add('active');
+        }
+        
+        // Voice Announcement
+        if (config && config.voiceNoteUrl && config.voiceNoteDate) {
+            const uploadDate = new Date(config.voiceNoteDate);
+            const now = new Date();
+            const daysDiff = (now - uploadDate) / (1000 * 60 * 60 * 24);
+            
+            if (daysDiff <= 5) {
+                document.getElementById('voiceAnnounceBtn').style.display = 'inline-flex';
+                document.getElementById('globalVoicePlayer').src = config.voiceNoteUrl;
+                
+                const lastPlayed = state.user?.lastVoicePlayedAt ? new Date(state.user.lastVoicePlayedAt) : new Date(0);
+                if (lastPlayed < uploadDate) {
+                    document.getElementById('voiceBadge').style.display = 'block';
+                } else {
+                    document.getElementById('voiceBadge').style.display = 'none';
+                }
+            } else {
+                document.getElementById('voiceAnnounceBtn').style.display = 'none';
+            }
+        }
+    } catch(e) {
+        console.log("Could not load config", e);
+    }
 }
 
 window.onload = initApp;
@@ -2243,22 +2512,34 @@ async function loadChatMessages() {
         const res = await fetch(`${API_URL}/chat`, {
             headers: { 'Authorization': `Bearer ${state.token}` }
         });
+        if(!res.ok) throw new Error("Failed to fetch chat");
         const msgs = await res.json();
         const container = document.getElementById('chatMessages');
         container.innerHTML = msgs.map(m => {
             const isMe = m.userId === state.user?.id;
+            const d = new Date(m.createdAt);
+            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            
             return `
-                <div class="chat-message ${isMe ? 'self' : ''}">
-                    <div class="chat-meta">
-                        ${m.user.isVIP ? '<i class="fas fa-star" style="color:var(--gold);"></i>' : ''} 
-                        <b style="color:${m.user.role === 'admin' ? 'var(--green)' : 'inherit'}">${m.user.name}</b>
+                <div class="chat-message ${isMe ? 'self' : ''}" style="margin-bottom:12px;">
+                    <div class="chat-meta" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            ${m.user && m.user.role === 'admin' ? '<i class="fas fa-crown" style="color:#ffed4e;"></i>' : (m.user && m.user.isVIP ? '<i class="fas fa-star" style="color:var(--gold);"></i>' : '')} 
+                            <b style="color:${m.user && m.user.role === 'admin' ? '#ff4757' : 'inherit'}">
+                                ${m.user && m.user.role === 'admin' ? '<span style="background:#ff4757;color:#fff;padding:2px 5px;border-radius:5px;font-size:0.7rem;">ADMIN</span> ' : ''}${m.user ? m.user.name : 'Unknown User'}
+                            </b>
+                        </div>
+                        <span style="font-size:0.65rem; color:var(--gray); margin-left:8px;">${dateStr}, ${timeStr}</span>
                     </div>
-                    <div style="color:var(--text-main);">${m.message}</div>
+                    <div style="color:var(--text-main); margin-top:4px;">${m.message}</div>
                 </div>
             `;
         }).join('');
         container.scrollTop = container.scrollHeight;
-    } catch(e) {}
+    } catch(e) {
+        console.error("Chat Error:", e);
+    }
 }
 
 window.sendChatMessage = async function() {
@@ -2268,11 +2549,17 @@ window.sendChatMessage = async function() {
     input.value = '';
     
     try {
-        await fetch(`${API_URL}/chat`, {
+        const res = await fetch(`${API_URL}/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
             body: JSON.stringify({ message: msg })
         });
+        if(!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Failed to send message");
+        }
         loadChatMessages();
-    } catch(e) {}
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
 }

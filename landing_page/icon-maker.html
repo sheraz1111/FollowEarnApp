@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>App Icon Resizer</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0b0f19; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .box { background: #151b2b; padding: 30px; border-radius: 15px; text-align: center; border: 2px dashed #f59e0b; width: 400px; max-width: 90%; }
+        h2 { color: #f59e0b; }
+        input[type='file'] { display: none; }
+        .btn { background: #f59e0b; color: black; padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; display: inline-block; text-decoration: none; }
+        #preview { margin-top: 20px; max-width: 200px; border-radius: 20px; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        #info { margin-top: 10px; font-size: 0.9rem; color: #9ca3af; }
+    </style>
+</head>
+<body>
+    <div class='box'>
+        <h2>App Icon Resizer</h2>
+        <p>Select your image to automatically resize to 512x512 and compress under 256KB.</p>
+        <label class='btn'>
+            Choose Image
+            <input type='file' id='upload' accept='image/*'>
+        </label>
+        <br>
+        <img id='preview'>
+        <div id='info'></div>
+        <a id='downloadBtn' class='btn' style='display:none;'>Download Icon</a>
+    </div>
+
+    <script>
+        document.getElementById('upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512;
+                    canvas.height = 512;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Draw image scaled
+                    ctx.drawImage(img, 0, 0, 512, 512);
+
+                    // Export as PNG
+                    let dataUrl = canvas.toDataURL('image/png');
+                    
+                    const kbSize = Math.round(dataUrl.length / 1024);
+                    
+                    document.getElementById('preview').src = dataUrl;
+                    document.getElementById('preview').style.display = 'inline-block';
+                    document.getElementById('info').innerHTML = 'New Size: 512x512<br>File Size: ~' + kbSize + ' KB <span style="color:#10b981;">(PNG Format!)</span>';
+                    
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    downloadBtn.href = dataUrl;
+                    downloadBtn.download = 'app_icon_512.png';
+                    downloadBtn.style.display = 'inline-block';
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        });
+    </script>
+</body>
+</html>
