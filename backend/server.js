@@ -31,11 +31,11 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Multer config
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+const storage = multer.memoryStorage();
+const upload = multer({ 
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB max limit
 });
-const upload = multer({ storage });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-mvp';
 
@@ -76,11 +76,12 @@ app.post('/api/register', async (req, res) => {
             }
         }
 
+        const country = req.headers['x-vercel-ip-country'] || 'Unknown';
         const user = await prisma.user.create({
-            data: { name, email, password_hash, role, coins_balance: 50, referralCode: myReferralCode, referredById, lastSeen: new Date() }
+            data: { name, email, password_hash, role, coins_balance: 50, referralCode: myReferralCode, referredById, lastSeen: new Date(), country }
         });
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
     } catch (err) {
         res.status(400).json({ error: 'Email already exists or invalid data' });
     }
@@ -109,10 +110,11 @@ app.post('/api/login', async (req, res) => {
             return res.status(403).json({ error: 'Account banned' });
         }
         
-        // Update lastSeen
+        // Update lastSeen and country
+        const country = req.headers['x-vercel-ip-country'] || 'Unknown';
         await prisma.user.update({
             where: { id: user.id },
-            data: { lastSeen: new Date() }
+            data: { lastSeen: new Date(), country }
         });
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
@@ -275,19 +277,23 @@ app.post('/api/auth/google', async (req, res) => {
         if (!user) {
             // Create user
             const dummyPassword = await bcrypt.hash(Math.random().toString(36), 10);
+            const country = req.headers['x-vercel-ip-country'] || 'Unknown';
             user = await prisma.user.create({
                 data: {
                     name,
                     email,
                     password_hash: dummyPassword,
-                    googleId
+                    googleId,
+                    country,
+                    lastSeen: new Date()
                 }
             });
-        } else if (!user.googleId) {
-            // Link existing account to Google
+        } else {
+            // Link existing account to Google if needed, update lastSeen and country
+            const country = req.headers['x-vercel-ip-country'] || 'Unknown';
             user = await prisma.user.update({
                 where: { email },
-                data: { googleId }
+                data: { googleId: user.googleId || googleId, lastSeen: new Date(), country }
             });
         }
 
@@ -305,14 +311,14 @@ app.post('/api/auth/google', async (req, res) => {
 
 app.get('/api/me', authenticate, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, referralCode: user.referralCode, isVIP: user.isVIP, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, referralCode: user.referralCode, isVIP: user.isVIP, uiId: user.uiId, lastVoicePlayedAt: user.lastVoicePlayedAt } });
 });
 
 app.get('/api/admin/direct-orders', authenticate, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
     const orders = await prisma.directOrder.findMany({
         orderBy: { createdAt: 'desc' },
-        include: { user: { select: { name: true, email: true } } }
+        include: { user: { select: { name: true, email: true, id: true, uiId: true } } }
     });
     res.json(orders);
 });
@@ -330,10 +336,20 @@ app.patch('/api/admin/direct-orders/:id/process', authenticate, async (req, res)
         const order = await prisma.directOrder.findUnique({ where: { id: orderId } });
         if (!order || order.status !== 'pending') return res.status(400).json({ error: 'Invalid or already processed order' });
 
-        const updatedOrder = await prisma.directOrder.update({
-            where: { id: orderId },
-            data: { status }
-        });
+        const [updatedOrder] = await prisma.$transaction([
+            prisma.directOrder.update({
+                where: { id: orderId },
+                data: { status }
+            }),
+            prisma.notification.create({
+                data: {
+                    userId: order.userId,
+                    message: status === 'completed' 
+                        ? `Your direct order for ${order.pkgName} has been approved and is being processed!` 
+                        : `Your direct order for ${order.pkgName} was rejected. Please contact support if you think this is an error.`
+                }
+            })
+        ]);
         
         return res.json({ message: `Order ${status} successfully`, order: updatedOrder });
     } catch (err) {
@@ -355,20 +371,22 @@ app.get('/api/platforms', async (req, res) => {
         if (platforms.length === 0) {
             console.log("No platforms found. Auto-seeding platforms...");
             const defaultPlatforms = [
-                { name: 'YouTube', type: 'follow' },
-                { name: 'YouTube', type: 'like' },
-                { name: 'YouTube', type: 'comment' },
-                { name: 'TikTok', type: 'follow' },
-                { name: 'TikTok', type: 'like' },
-                { name: 'TikTok', type: 'comment' },
-                { name: 'Instagram', type: 'follow' },
-                { name: 'Instagram', type: 'like' },
-                { name: 'Facebook', type: 'follow' },
-                { name: 'Rumble', type: 'follow' }
+                { name: 'YouTube' },
+                { name: 'TikTok' },
+                { name: 'Instagram' },
+                { name: 'Facebook' },
+                { name: 'Rumble' },
+                { name: 'Kick' },
+                { name: 'Twitch' },
+                { name: 'X / Twitter' }
             ];
             
             for (const p of defaultPlatforms) {
-                await prisma.platform.create({ data: p });
+                try {
+                    await prisma.platform.create({ data: p });
+                } catch(err) {
+                    // Ignore unique constraint errors in case of race condition
+                }
             }
             platforms = await prisma.platform.findMany();
         }
@@ -376,7 +394,7 @@ app.get('/api/platforms', async (req, res) => {
         res.json(platforms);
     } catch (e) {
         console.error("Error fetching platforms:", e);
-        res.status(500).json({ error: "Failed to fetch platforms" });
+        res.status(500).json({ error: e.message || "Failed to fetch platforms", stack: e.stack });
     }
 });
 
@@ -501,6 +519,13 @@ app.post('/api/tasks/start', authenticate, async (req, res) => {
     res.json({ success: true, startTime: activeTask.startTime });
 });
 
+app.post('/api/upload', authenticate, upload.single('screenshot'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Screenshot required' });
+    const b64 = req.file.buffer.toString('base64');
+    const fileUrl = `data:${req.file.mimetype};base64,${b64}`;
+    res.json({ success: true, fileUrl });
+});
+
 app.post('/api/submissions', authenticate, upload.single('screenshot'), async (req, res) => {
     const { requestId } = req.body;
     if (!req.file) return res.status(400).json({ error: 'Screenshot required' });
@@ -514,26 +539,27 @@ app.post('/api/submissions', authenticate, upload.single('screenshot'), async (r
     // No more 30-second fraud check based on user request
     // Directly accept submission
 
-    // Check if user already submitted for this campaign
+    const b64 = req.file.buffer.toString('base64');
+    const screenshotUrl = `data:${req.file.mimetype};base64,${b64}`;
+
+    // Fraud Check: Ensure this EXACT screenshot hasn't been used before anywhere
     const existingSub = await prisma.submission.findFirst({
-        where: {
-            userId: req.user.id,
-            requestId: parseInt(requestId)
-        }
+        where: { screenshot_url: screenshotUrl }
     });
+    
     if (existingSub) {
-        return res.status(400).json({ error: 'You have already submitted a screenshot for this campaign.' });
+        return res.status(400).json({ error: 'Fraud Detected: This screenshot has already been used!' });
     }
 
     // Decrement slots immediately to prevent overbooking
     const newStatus = (request.slots_remaining - 1) <= 0 ? 'completed' : 'active';
-    
+
     const [submission] = await prisma.$transaction([
         prisma.submission.create({
             data: {
                 requestId: parseInt(requestId),
                 userId: req.user.id,
-                screenshot_url: `/uploads/${req.file.filename}`
+                screenshot_url: screenshotUrl
             }
         }),
         prisma.followRequest.update({
@@ -672,7 +698,7 @@ app.get('/api/wallet/transactions', authenticate, async (req, res) => {
 // --- ADMIN ---
 app.get('/api/admin/users', authenticate, isAdmin, async (req, res) => {
     const users = await prisma.user.findMany({
-        select: { id: true, name: true, email: true, role: true, coins_balance: true, status: true, createdAt: true, totalCampaignsRun: true, totalTasksDone: true, lastSeen: true },
+        select: { id: true, name: true, email: true, role: true, coins_balance: true, status: true, createdAt: true, totalCampaignsRun: true, totalTasksDone: true, lastSeen: true, country: true },
         orderBy: { createdAt: 'desc' }
     });
     res.json(users);
@@ -862,7 +888,7 @@ app.get('/api/admin/deposits', authenticate, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
     const deposits = await prisma.deposit.findMany({
         orderBy: { createdAt: 'desc' },
-        include: { user: { select: { name: true, email: true } } }
+        include: { user: { select: { name: true, email: true, id: true, uiId: true } } }
     });
     res.json(deposits);
 });
@@ -889,7 +915,6 @@ app.patch('/api/admin/deposits/:id/approve', authenticate, async (req, res) => {
         prisma.notification.create({
             data: {
                 userId: deposit.userId,
-                title: 'Payment Approved',
                 message: `Your payment of ${deposit.price} was approved. You received ${deposit.amount} coins!`
             }
         })
@@ -956,7 +981,6 @@ app.patch('/api/admin/deposits/:id/reject', authenticate, async (req, res) => {
         prisma.notification.create({
             data: {
                 userId: deposit.userId,
-                title: 'Payment Rejected',
                 message: `Your recent payment request was rejected. Please contact support if you think this is an error.`
             }
         })
@@ -1010,6 +1034,16 @@ app.post('/api/store/deposit', authenticate, async (req, res) => {
     if (!amount || !price || !method || !txId) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    if (method === 'jazzcash' || method === 'easypaisa') {
+        if (!/^\d{11,12}$/.test(txId)) {
+            return res.status(400).json({ error: 'Invalid TID. JazzCash/Easypaisa TID must be 11 or 12 digits.' });
+        }
+    } else if (method === 'binance') {
+        if (!/^[A-Za-z0-9]{10,64}$/.test(txId)) {
+            return res.status(400).json({ error: 'Invalid TXID. Binance TXID must be alphanumeric.' });
+        }
+    }
     const deposit = await prisma.deposit.create({
         data: {
             userId: req.user.id,
@@ -1020,6 +1054,18 @@ app.post('/api/store/deposit', authenticate, async (req, res) => {
             proofImg
         }
     });
+
+    // Notify Admins
+    const admins = await prisma.user.findMany({ where: { role: 'admin' } });
+    if (admins.length > 0) {
+        await prisma.notification.createMany({
+            data: admins.map(a => ({
+                userId: a.id,
+                message: `New Deposit of ${amount} coins received from User #${req.user.id}`
+            }))
+        });
+    }
+
     res.json({ success: true, deposit });
 });
 
@@ -1033,7 +1079,7 @@ app.post('/api/users/heartbeat', authenticate, async (req, res) => {
 
 app.get('/api/leaderboard', async (req, res) => {
     const vips = await prisma.user.findMany({ where: { isVIP: true }, select: { id: true, name: true, coins_balance: true }, take: 10 });
-    const topEarners = await prisma.user.findMany({ orderBy: { totalTasksDone: 'desc' }, select: { id: true, name: true, totalTasksDone: true, coins_balance: true }, take: 10 });
+    const topEarners = await prisma.user.findMany({ orderBy: { coins_balance: 'desc' }, select: { id: true, name: true, totalTasksDone: true, coins_balance: true }, take: 10 });
     const topPromoters = await prisma.user.findMany({ orderBy: { totalCampaignsRun: 'desc' }, select: { id: true, name: true, totalCampaignsRun: true }, take: 10 });
     
     res.json({ vips, topEarners, topPromoters });
@@ -1257,28 +1303,51 @@ setInterval(async () => {
     }
 }, 5 * 60 * 1000); // Check every 5 minutes
 
-// Data Cleanup: Delete submissions older than 20 days
+// Data Cleanup: Delete submissions, deposits, and direct orders older than 15 days
 setInterval(async () => {
     try {
-        const twentyDaysAgo = new Date();
-        twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
+        const fifteenDaysAgo = new Date();
+        fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
 
+        // 1. Clean up Submissions
         const oldSubmissions = await prisma.submission.findMany({
-            where: { createdAt: { lt: twentyDaysAgo } }
+            where: { createdAt: { lt: fifteenDaysAgo }, status: { in: ['approved', 'rejected'] } }
         });
-
         for (const sub of oldSubmissions) {
-            if (sub.screenshot_url) {
+            if (sub.screenshot_url && sub.screenshot_url.startsWith('/uploads/')) {
                 const filePath = path.join(__dirname, sub.screenshot_url);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
             }
             await prisma.submission.delete({ where: { id: sub.id } });
         }
-        if (oldSubmissions.length > 0) {
-            console.log(`Data Cleanup: Deleted ${oldSubmissions.length} old submissions.`);
+        if (oldSubmissions.length > 0) console.log(`Data Cleanup: Deleted ${oldSubmissions.length} old submissions.`);
+
+        // 2. Clean up Deposits
+        const oldDeposits = await prisma.deposit.findMany({
+            where: { createdAt: { lt: fifteenDaysAgo }, status: { in: ['approved', 'rejected'] } }
+        });
+        for (const dep of oldDeposits) {
+            if (dep.proofImg && dep.proofImg.startsWith('/uploads/')) {
+                const filePath = path.join(__dirname, dep.proofImg);
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            }
+            await prisma.deposit.delete({ where: { id: dep.id } });
         }
+        if (oldDeposits.length > 0) console.log(`Data Cleanup: Deleted ${oldDeposits.length} old deposits.`);
+
+        // 3. Clean up Direct Orders
+        const oldOrders = await prisma.directOrder.findMany({
+            where: { createdAt: { lt: fifteenDaysAgo }, status: { in: ['completed', 'rejected'] } }
+        });
+        for (const ord of oldOrders) {
+            if (ord.proofImg && ord.proofImg.startsWith('/uploads/')) {
+                const filePath = path.join(__dirname, ord.proofImg);
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            }
+            await prisma.directOrder.delete({ where: { id: ord.id } });
+        }
+        if (oldOrders.length > 0) console.log(`Data Cleanup: Deleted ${oldOrders.length} old direct orders.`);
+
     } catch(e) {
         console.error("Data cleanup error:", e);
     }
@@ -1288,6 +1357,16 @@ app.post('/api/store/direct-order', authenticate, async (req, res) => {
     const { platform, pkgName, price, method, txId, proofImg, targetUrl } = req.body;
     if (!platform || !pkgName || !price || !method || !txId || !targetUrl) {
         return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (method === 'jazzcash' || method === 'easypaisa') {
+        if (!/^\d{11,12}$/.test(txId)) {
+            return res.status(400).json({ error: 'Invalid TID. JazzCash/Easypaisa TID must be 11 or 12 digits.' });
+        }
+    } else if (method === 'binance') {
+        if (!/^[A-Za-z0-9]{10,64}$/.test(txId)) {
+            return res.status(400).json({ error: 'Invalid TXID. Binance TXID must be alphanumeric.' });
+        }
     }
     try {
         const order = await prisma.directOrder.create({
@@ -1302,6 +1381,18 @@ app.post('/api/store/direct-order', authenticate, async (req, res) => {
                 targetUrl
             }
         });
+        
+        // Notify Admins
+        const admins = await prisma.user.findMany({ where: { role: 'admin' } });
+        if (admins.length > 0) {
+            await prisma.notification.createMany({
+                data: admins.map(a => ({
+                    userId: a.id,
+                    message: `New Direct Order received from User #${req.user.id} (${pkgName})`
+                }))
+            });
+        }
+        
         res.json({ message: 'Order submitted successfully', order });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });

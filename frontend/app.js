@@ -164,12 +164,12 @@ async function handleFpEmailSubmit(e) {
         fpEmailTarget = email;
         document.getElementById('fpEmailForm').style.display = 'none';
         document.getElementById('fpResetForm').style.display = 'block';
-        document.getElementById('fpInstructionText').innerText = `Code sent to ${email}`;
         
-        // MOCK ONLY: In production this would be emailed.
         if(res.mockCode) {
-            showToast(`[TESTING] Your code is: ${res.mockCode}`, 'info');
+            document.getElementById('fpInstructionText').innerHTML = `<span style="color:#10b981; font-weight:bold; font-size:1.1rem;">Your 6-digit recovery code is: ${res.mockCode}</span>`;
+            showToast(`Your code is: ${res.mockCode}`, 'info');
         } else {
+            document.getElementById('fpInstructionText').innerText = `Code sent to ${email}`;
             showToast('Recovery code sent to your email!');
         }
     } catch (err) {
@@ -242,10 +242,41 @@ const auth = {
 };
 
 // ===== NAVIGATION / UI =====
+const EXCLUDED_EMAILS = [
+    'poetry060@gmail.com',
+    'sherazwalled218@gmail.com',
+    'sherazwalled@gmail.com'
+];
+
+let monetagLoaded = false;
+function loadMonetagAds() {
+    if (monetagLoaded) return;
+    if (state.user && state.user.email && EXCLUDED_EMAILS.includes(state.user.email.toLowerCase())) {
+        console.log("Anti-Ban: Monetag ads blocked for admin/testing account.");
+        return;
+    }
+    
+    monetagLoaded = true;
+    
+    // Push Notification Ad
+    const pushScript = document.createElement('script');
+    pushScript.src = "https://5gvci.com/act/files/tag.min.js?z=11160140";
+    pushScript.setAttribute('data-cfasync', 'false');
+    pushScript.async = true;
+    document.head.appendChild(pushScript);
+
+    // In-Page Push (Banner) Ad
+    const bannerScript = document.createElement('script');
+    bannerScript.innerHTML = `(function(s){s.dataset.zone='11160142',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`;
+    document.body.appendChild(bannerScript);
+}
+
 function initUserUI() {
     if (!state.user) return;
+    loadMonetagAds();
     // Show main UI elements
     document.getElementById('mainHeader').classList.remove('hidden');
+    if (document.getElementById('honestyBanner')) document.getElementById('honestyBanner').classList.remove('hidden');
     document.getElementById('bottomNav').classList.remove('hidden');
     document.getElementById('fabCreate').classList.remove('hidden');
 
@@ -353,12 +384,19 @@ function toggleTheme() {
 }
 
 // ===== NOTIFICATIONS =====
+window.globalAudioCtx = null;
+document.addEventListener('click', () => {
+    if (!window.globalAudioCtx) window.globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (window.globalAudioCtx.state === 'suspended') window.globalAudioCtx.resume();
+});
+
 window.playNotificationSound = function() {
     const pref = localStorage.getItem('notifSound') || 'tone1';
     if (pref === 'mute') return;
 
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!window.globalAudioCtx) window.globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = window.globalAudioCtx;
         if (ctx.state === 'suspended') ctx.resume();
 
         const duration = 7.0; // 7 seconds
@@ -376,7 +414,7 @@ window.playNotificationSound = function() {
                 osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + i + 0.1);
                 
                 gain.gain.setValueAtTime(0, ctx.currentTime + i);
-                gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + i + 0.05);
+                gain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + i + 0.05);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i + 0.8);
                 
                 osc.start(ctx.currentTime + i);
@@ -393,7 +431,7 @@ window.playNotificationSound = function() {
             osc.frequency.setValueAtTime(440, ctx.currentTime);
             gain.gain.setValueAtTime(0, ctx.currentTime);
             for (let i = 0; i < 7; i++) {
-                gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i + 0.2);
+                gain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + i + 0.5);
                 gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + i + 0.8);
             }
             gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
@@ -612,16 +650,23 @@ async function buildHomePage() {
             <button onclick="setTypeFilter('comment')" style="padding:5px 12px; border-radius:20px; border:none; cursor:pointer; background:${state.currentTypeFilter === 'comment' ? 'var(--primary)' : '#333'}; color:white; font-weight:bold; white-space:nowrap;"><i class="fas fa-comment"></i> Comment</button>
         </div>
 
-        <div class="notice-box">
-            <div class="notice-title">🤝 HONESTY SYSTEM 🤝</div>
-            <div class="notice-urdu">❤️ Please upload the FULL screenshot!</div>
-            <div class="notice-hindi">Kripya poora screenshot upload karein!</div>
-            <ul class="notice-list">
-                <li><span class="notice-icon"><i class="fas fa-check-circle"></i></span>Every second here is precious. Be honest!</li>
-                <li><span class="notice-icon"><i class="fas fa-check-circle"></i></span>Do NOT fake screenshots. Your account will be banned.</li>
-                <li><span class="notice-icon"><i class="fas fa-check-circle"></i></span>Complete the task first, then upload.</li>
-            </ul>
+        ${!window.honestyBoxClosed ? `
+        <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; align-items:center; justify-content:center; animation:fadeIn 0.3s ease;">
+            <div class="notice-box" style="position:relative; max-width:400px; width:90%; background:linear-gradient(135deg,rgba(20,20,20,1),rgba(245,158,11,0.2)); border:2px solid var(--gold); border-radius:15px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.8);">
+                <div style="position:absolute; top:-12px; right:-12px; background:#ff4757; color:#fff; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:1.1rem; box-shadow:0 2px 8px rgba(0,0,0,0.5); border:2px solid #fff;" onclick="window.honestyBoxClosed=true; this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </div>
+                <div class="notice-title" style="margin-top:5px; font-size:1.1rem;">🤝 HONESTY SYSTEM 🤝</div>
+                <div class="notice-urdu">❤️ Please upload the FULL screenshot!</div>
+                <div class="notice-hindi">Kripya poora screenshot upload karein!</div>
+                <ul class="notice-list" style="margin-top:15px;">
+                    <li><span class="notice-icon"><i class="fas fa-check-circle"></i></span>Every second here is precious. Be honest!</li>
+                    <li><span class="notice-icon"><i class="fas fa-check-circle"></i></span>Do NOT fake screenshots. Your account will be banned.</li>
+                    <li><span class="notice-icon"><i class="fas fa-check-circle"></i></span>Complete the task first, then upload.</li>
+                </ul>
+            </div>
         </div>
+        ` : ''}
     `;
 
     if (filtered.length === 0) {
@@ -647,7 +692,7 @@ async function buildHomePage() {
                 if (req.target_link.includes('v=')) videoId = req.target_link.split('v=')[1]?.split('&')[0];
                 else if (req.target_link.includes('youtu.be/')) videoId = req.target_link.split('youtu.be/')[1]?.split('?')[0];
                 if (videoId) {
-                    ytThumbnail = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;height:140px;object-fit:cover;border-radius:12px 12px 0 0;" alt="Video Thumbnail">`;
+                    ytThumbnail = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;height:100px;object-fit:cover;border-radius:12px 12px 0 0;" alt="Video Thumbnail">`;
                 }
             }
 
@@ -1285,15 +1330,19 @@ async function buildStorePage() {
 
 // ===== ADVANCED FEATURES LOGIC =====
 
-window.claimDailyBonus = async function() {
+window.claimDailyBonus = async function(btn) {
+    if (btn) btn.disabled = true;
     try {
         // Monetag Direct Link Ad
-        window.open('https://omg10.com/4/11160137', '_blank');
+        const isExcluded = state.user && state.user.email && EXCLUDED_EMAILS.includes(state.user.email.toLowerCase());
+        if (!isExcluded) {
+            window.open('https://omg10.com/4/11160137', '_blank');
+        }
 
         const data = await api.request('/users/daily-bonus', { method: 'POST' });
         if (data.success) {
             state.user.coins = data.coins;
-            updateHeaderCoins();
+            updateCoinDisplay(state.user.coins);
             showToast('Daily bonus claimed! +10 Coins', 'success');
             if (state.currentPage === 'earn') renderPage('earn');
         } else {
@@ -1301,6 +1350,8 @@ window.claimDailyBonus = async function() {
         }
     } catch (e) {
         showToast(e.message || 'Error claiming bonus', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -1310,6 +1361,24 @@ window.copyReferralCode = function(code) {
     }).catch(() => {
         showToast('Failed to copy', 'error');
     });
+}
+
+window.copyToClipboard = function(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('User ID Copied to Clipboard!', 'success');
+    }).catch(() => {
+        showToast('Failed to copy', 'error');
+    });
+}
+
+window.claimScratchCard = async function() {
+    try {
+        const data = await api.request('/users/daily-bonus', { method: 'POST' });
+        if (data.success) {
+            state.user.coins = data.coins;
+            updateCoinDisplay(state.user.coins);
+        }
+    } catch(e) {}
 }
 
 window.buyCoins = async function(amount) {
@@ -1427,7 +1496,10 @@ async function buildProfilePage() {
         <h2 style="color:var(--gold);margin-bottom:20px;"><i class="fas fa-user"></i> My Profile</h2>
         <div class="profile-card">
             <div class="profile-avatar-big">${state.user.name.charAt(0).toUpperCase()}</div>
-            <h3 style="font-size:1.4rem;margin-bottom:5px;">${state.user.name}</h3>
+            <h3 style="font-size:1.4rem;margin-bottom:5px;">
+                ${state.user.name}
+                <i class="fas fa-edit" onclick="editUsernameDirectly()" style="font-size:1rem;color:var(--gray);cursor:pointer;margin-left:8px;" title="Edit Username"></i>
+            </h3>
             <div style="color:var(--gray);font-size:0.9rem;margin-bottom:10px;">${state.user.email}</div>
             <div style="background:rgba(124,58,237,0.1);border:1px solid var(--border-main);border-radius:10px;padding:10px 20px;display:inline-block;margin-bottom:15px;">
                 UID: <span style="color:var(--gold);font-weight:bold;">${uid}</span>
@@ -1494,6 +1566,21 @@ window.saveSettingsName = async function() {
     }
 };
 
+window.editUsernameDirectly = async function() {
+    const newName = prompt("Enter your new username:", state.user.name);
+    if (!newName || newName.trim() === "" || newName.trim() === state.user.name) return;
+    
+    try {
+        const res = await api.auth.updateProfile(newName.trim());
+        state.user.name = res.user.name;
+        showToast('Username updated successfully!', 'success');
+        renderPage('profile-page');
+        document.getElementById('headerUsername').innerText = state.user.name;
+    } catch(e) {
+        showToast(e.message, 'error');
+    }
+};
+
 window.saveSettingsPassword = async function() {
     const cur = document.getElementById('settingsCurrentPass').value;
     const newP = document.getElementById('settingsNewPass').value;
@@ -1516,28 +1603,42 @@ async function buildLeaderboardPage() {
         <div style="background:linear-gradient(45deg,var(--gold),#ffed4e);color:#000;padding:14px;border-radius:10px;margin-bottom:20px;text-align:center;font-weight:bold;">
             <i class="fas fa-crown"></i> Top 3 get Bonus Coins every month!
         </div>
-    `;
-    // Mock leaderboard data since API might not have endpoint
-    const mockTop = [
-        {name:'Ahmad Khan', coins:2450, rank:1},
-        {name:'Sara Ali', coins:1980, rank:2},
-        {name:'Bilal Ahmed', coins:1750, rank:3},
-        {name:'Fatima', coins:1200, rank:4},
-        {name:'Usman', coins:980, rank:5},
-    ];
-    mockTop.forEach(user => {
-        const rankClass = user.rank <= 3 ? `rank-${user.rank}` : 'rank-other';
-        html += `
-            <div class="leaderboard-item">
-                <div class="leaderboard-rank ${rankClass}">${user.rank <= 3 ? ['🥇','🥈','🥉'][user.rank-1] : user.rank}</div>
-                <div style="flex:1;">
-                    <div style="font-weight:600;">${user.name}</div>
-                </div>
-                <div style="color:var(--gold);font-weight:bold;"><i class="fas fa-coins"></i> ${user.coins}</div>
-            </div>
-        `;
-    });
-    html += '</div>';
+        <div id="dynamicLeaderboardContent">
+            <div class="empty-state"><div class="loading-spinner" style="width:30px;height:30px;margin:0 auto;"></div></div>
+        </div>
+    </div>`;
+
+    setTimeout(async () => {
+        const cont = document.getElementById('dynamicLeaderboardContent');
+        if (!cont) return;
+        try {
+            const res = await fetch(`${API_URL}/leaderboard`);
+            const data = await res.json();
+            let topUsers = data.topEarners || [];
+            let listHtml = '';
+            if (topUsers.length === 0) {
+                listHtml = '<div class="empty-state"><p>No users found yet!</p></div>';
+            } else {
+                topUsers.forEach((user, idx) => {
+                    const rank = idx + 1;
+                    const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+                    listHtml += `
+                        <div class="leaderboard-item">
+                            <div class="leaderboard-rank ${rankClass}">${rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : rank}</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600;">${user.name}</div>
+                            </div>
+                            <div style="color:var(--gold);font-weight:bold;"><i class="fas fa-coins"></i> ${user.coins_balance}</div>
+                        </div>
+                    `;
+                });
+            }
+            cont.innerHTML = listHtml;
+        } catch(e) {
+            cont.innerHTML = '<div class="empty-state"><p>Error loading leaderboard</p></div>';
+        }
+    }, 50);
+
     return html;
 }
 
@@ -1694,7 +1795,7 @@ window.loadSuperAdminTab = async function(tab, btn) {
                     html += `
                     <div style="background:var(--card-bg); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
                         <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-                            <span style="font-weight:bold;color:var(--text-main);">User: ${o.user.name}</span>
+                            <span style="font-weight:bold;color:var(--text-main);">User: ${o.user.name} (UID: ${o.user.uiId}) <i class="fas fa-copy" style="cursor:pointer;color:var(--primary);margin-left:5px;" onclick="copyToClipboard('${o.user.uiId}')" title="Copy User UID"></i></span>
                             <span style="color:${o.status === 'pending' ? 'var(--gold)' : (o.status === 'completed' ? 'var(--green)' : 'red')}">${o.status.toUpperCase()}</span>
                         </div>
                         <div style="margin-bottom:5px;color:var(--gray);">Platform: ${o.platform.toUpperCase()} - Package: ${o.package}</div>
@@ -1757,7 +1858,7 @@ window.loadSuperAdminTab = async function(tab, btn) {
                 cont.innerHTML = deposits.map(d => `
                     <div style="background:var(--card-bg); padding:15px; border-radius:12px; margin-bottom:15px; border:1px solid var(--border);">
                         <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-                            <span style="font-weight:bold;color:var(--text-main);">User: ${d.user.name}</span>
+                            <span style="font-weight:bold;color:var(--text-main);">User: ${d.user.name} (UID: ${d.user.uiId}) <i class="fas fa-copy" style="cursor:pointer;color:var(--primary);margin-left:5px;" onclick="copyToClipboard('${d.user.uiId}')" title="Copy User UID"></i></span>
                             <span style="font-size:0.8rem;color:${d.status === 'approved' ? 'var(--green)' : d.status === 'rejected' ? '#ff4757' : 'var(--gold)'};font-weight:bold;">${d.status.toUpperCase()}</span>
                         </div>
                         <div style="font-size:0.9rem;color:var(--gray);margin-bottom:5px;">Method: <strong style="color:var(--primary)">${d.method.toUpperCase()}</strong></div>
@@ -1803,6 +1904,12 @@ window.adminProcessDirectOrder = async function(id, status) {
 };
 
 function buildSuperAdminUsersList(users) {
+    const countries = [...new Set(users.map(u => u.country || 'Unknown'))].sort();
+    let countryOptions = '<option value="all">All Countries</option>';
+    countries.forEach(c => {
+        countryOptions += `<option value="${c}">${c}</option>`;
+    });
+
     let html = `
         <h3 style="margin-bottom:15px;"><i class="fas fa-users"></i> All Registered Users</h3>
         
@@ -1814,9 +1921,13 @@ function buildSuperAdminUsersList(users) {
             </div>
             <button onclick="copySelectedAdminEmails()" style="background:var(--primary); color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;"><i class="fas fa-copy"></i> Copy Emails</button>
             <button onclick="sendBulkEmailAdmin()" style="background:#ff4757; color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;"><i class="fas fa-envelope"></i> Send Email (BCC)</button>
+            
+            <select id="superAdminCountryFilter" style="padding:8px; border-radius:5px; background:var(--card-bg); color:var(--text-main); border:1px solid var(--border); font-weight:bold; margin-left:auto;" onchange="filterSuperAdminUsers()">
+                ${countryOptions}
+            </select>
         </div>
 
-        <input type="text" id="superAdminSearch" placeholder="Search by email or name..." style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--card-bg);color:var(--text-main);margin-bottom:15px;" oninput="filterSuperAdminUsers()">
+        <input type="text" id="superAdminSearch" placeholder="Search by ID, email, or name..." style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--card-bg);color:var(--text-main);margin-bottom:15px;" oninput="filterSuperAdminUsers()">
         <div id="superAdminUsersList">
     `;
     users.forEach(u => {
@@ -1826,14 +1937,15 @@ function buildSuperAdminUsersList(users) {
             const diffMs = Date.now() - new Date(u.lastSeen).getTime();
             if (diffMs < 5 * 60 * 1000) isOnline = true;
         }
-
+        const countryLabel = u.country || 'Unknown';
         html += `
-            <div class="user-row" data-search="${u.name.toLowerCase()} ${u.email.toLowerCase()}" style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); padding:15px; border-radius:10px; margin-bottom:10px; border-left: 4px solid var(--primary);">
+            <div class="user-row" data-country="${countryLabel}" data-search="${u.id} ${u.name.toLowerCase()} ${u.email.toLowerCase()}" style="display:flex; justify-content:space-between; align-items:center; background:var(--card-bg); padding:15px; border-radius:10px; margin-bottom:10px; border-left: 4px solid var(--primary);">
                 <div style="display:flex; align-items:center; gap:15px;">
                     <input type="checkbox" class="admin-user-checkbox" value="${u.email}" style="width:20px; height:20px;">
                     <div style="flex:1;">
                         <div style="font-weight:bold; display:flex; align-items:center; gap:8px;">
                             ${u.name} <span style="color:var(--gray);font-size:0.8rem;">(UID: ${u.id})</span>
+                            <span style="font-size:0.75rem;background:var(--card-solid);color:var(--gold);padding:2px 8px;border-radius:10px;border:1px solid var(--gold);"><i class="fas fa-globe"></i> ${countryLabel}</span>
                             ${isOnline ? '<span style="font-size:0.7rem;background:rgba(16,185,129,0.1);color:var(--green);padding:2px 6px;border-radius:10px;">Online</span>' : '<span style="font-size:0.7rem;background:rgba(255,255,255,0.1);color:var(--gray);padding:2px 6px;border-radius:10px;">Offline</span>'}
                         </div>
                         <div style="color:var(--gold);font-size:0.9rem; margin-top:2px;">${u.email}</div>
@@ -1858,9 +1970,17 @@ function buildSuperAdminUsersList(users) {
 
 window.filterSuperAdminUsers = function() {
     const term = document.getElementById('superAdminSearch').value.toLowerCase();
+    const countryFilter = document.getElementById('superAdminCountryFilter') ? document.getElementById('superAdminCountryFilter').value : 'all';
+    
     document.querySelectorAll('#superAdminUsersList .user-row').forEach(row => {
-        if (row.dataset.search.includes(term)) row.style.display = 'flex';
-        else row.style.display = 'none';
+        const matchTerm = row.dataset.search.includes(term);
+        const matchCountry = (countryFilter === 'all') || (row.dataset.country === countryFilter);
+        
+        if (matchTerm && matchCountry) {
+            row.style.display = 'flex';
+        } else {
+            row.style.display = 'none';
+        }
     });
 };
 
@@ -2134,14 +2254,77 @@ async function submitCampaignForm() {
 
     // URL Validation
     const urlLower = url.toLowerCase();
-    if (platformName.includes('youtube') && !urlLower.includes('youtube.com') && !urlLower.includes('youtu.be')) return showToast('Please enter a valid YouTube URL.', 'error');
-    if (platformName.includes('tiktok') && !urlLower.includes('tiktok.com')) return showToast('Please enter a valid TikTok URL.', 'error');
-    if (platformName.includes('facebook') && !urlLower.includes('facebook.com') && !urlLower.includes('fb.watch')) return showToast('Please enter a valid Facebook URL.', 'error');
-    if (platformName.includes('instagram') && !urlLower.includes('instagram.com')) return showToast('Please enter a valid Instagram URL.', 'error');
-    if (platformName.includes('rumble') && !urlLower.includes('rumble.com')) return showToast('Please enter a valid Rumble URL.', 'error');
-    if (platformName.includes('kick') && !urlLower.includes('kick.com')) return showToast('Please enter a valid Kick URL.', 'error');
-    if (platformName.includes('twitch') && !urlLower.includes('twitch.tv')) return showToast('Please enter a valid Twitch URL.', 'error');
-    if ((platformName.includes('x') || platformName.includes('twitter')) && !urlLower.includes('twitter.com') && !urlLower.includes('x.com')) return showToast('Please enter a valid X/Twitter URL.', 'error');
+    let isValidUrl = false;
+    const isSubscribe = state.campaignType === 'subscribe';
+    
+    if (platformName.includes('youtube')) {
+        if (!urlLower.includes('youtube.com/') && !urlLower.includes('youtu.be/')) return showToast('Please enter a valid YouTube URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/watch') || urlLower.includes('youtu.be') || urlLower.includes('/shorts/')) return showToast('For Subscribe campaigns, please enter a Channel link, not a video link.', 'error');
+        } else {
+            if (urlLower.includes('/channel/') || urlLower.includes('/c/') || urlLower.includes('/user/') || (urlLower.includes('/@') && !urlLower.includes('/shorts/'))) return showToast('For this campaign, please enter a Video link, not a channel link.', 'error');
+        }
+        isValidUrl = true;
+    } else if (platformName.includes('tiktok')) {
+        if (!urlLower.includes('tiktok.com/')) return showToast('Please enter a valid TikTok URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/video/') || urlLower.includes('vt.tiktok.com') || urlLower.includes('vm.tiktok.com') || urlLower.includes('/t/')) return showToast('For Subscribe campaigns, please enter a Profile link, not a video link.', 'error');
+        } else {
+            if (!urlLower.includes('/video/') && !urlLower.includes('vt.tiktok.com') && !urlLower.includes('vm.tiktok.com') && !urlLower.includes('/t/')) return showToast('For this campaign, please enter a Video link, not a profile link.', 'error');
+        }
+        isValidUrl = true;
+    } else if (platformName.includes('facebook')) {
+        if (!urlLower.includes('facebook.com/') && !urlLower.includes('fb.watch/')) return showToast('Please enter a valid Facebook URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/posts/') || urlLower.includes('/videos/') || urlLower.includes('fb.watch') || urlLower.includes('/watch') || urlLower.includes('/reel/') || urlLower.includes('/reels/') || urlLower.includes('/photo') || urlLower.includes('permalink.php') || urlLower.includes('story.php')) return showToast('For Follow campaigns, please enter a Page/Profile link.', 'error');
+        } else {
+            if (!urlLower.includes('/posts/') && !urlLower.includes('/videos/') && !urlLower.includes('fb.watch') && !urlLower.includes('/watch') && !urlLower.includes('/reel/') && !urlLower.includes('/reels/') && !urlLower.includes('/photo') && !urlLower.includes('permalink.php') && !urlLower.includes('story.php')) return showToast('For this campaign, please enter a Post, Video, or Reel link.', 'error');
+        }
+        isValidUrl = true;
+    } else if (platformName.includes('instagram')) {
+        if (!urlLower.includes('instagram.com/')) return showToast('Please enter a valid Instagram URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/p/') || urlLower.includes('/reel/') || urlLower.includes('/reels/') || urlLower.includes('/tv/')) return showToast('For Follow campaigns, please enter a Profile link.', 'error');
+        } else {
+            if (!urlLower.includes('/p/') && !urlLower.includes('/reel/') && !urlLower.includes('/reels/') && !urlLower.includes('/tv/')) return showToast('For this campaign, please enter a Post or Reel link.', 'error');
+        }
+        isValidUrl = true;
+    } else if (platformName.includes('rumble')) {
+        if (!urlLower.includes('rumble.com/')) return showToast('Please enter a valid Rumble URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/v') && urlLower.includes('.html')) return showToast('For Subscribe campaigns, please enter a Channel/User link.', 'error');
+        } else {
+            if (urlLower.includes('/c/') || urlLower.includes('/user/')) return showToast('For this campaign, please enter a Video link.', 'error');
+        }
+        isValidUrl = true;
+    } else if (platformName.includes('kick')) {
+        if (!urlLower.includes('kick.com/')) return showToast('Please enter a valid Kick URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/video/') || urlLower.includes('/clip/')) return showToast('For Follow campaigns, please enter a Channel link.', 'error');
+        } else {
+            if (!urlLower.includes('/video/') && !urlLower.includes('/clip/')) return showToast('For this campaign, please enter a Video/Clip link.', 'error');
+        }
+        isValidUrl = true;
+    } else if (platformName.includes('twitch')) {
+        if (!urlLower.includes('twitch.tv/')) return showToast('Please enter a valid Twitch URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/videos/') || urlLower.includes('/clip/') || urlLower.includes('clips.twitch.tv')) return showToast('For Follow campaigns, please enter a Channel link.', 'error');
+        } else {
+            if (!urlLower.includes('/videos/') && !urlLower.includes('/clip/') && !urlLower.includes('clips.twitch.tv')) return showToast('For this campaign, please enter a Video/Clip link.', 'error');
+        }
+        isValidUrl = true;
+    } else if (platformName.includes('x') || platformName.includes('twitter')) {
+        if (!urlLower.includes('twitter.com/') && !urlLower.includes('x.com/')) return showToast('Please enter a valid X/Twitter URL.', 'error');
+        if (isSubscribe) {
+            if (urlLower.includes('/status/')) return showToast('For Follow campaigns, please enter a Profile link.', 'error');
+        } else {
+            if (!urlLower.includes('/status/')) return showToast('For this campaign, please enter a Tweet link.', 'error');
+        }
+        isValidUrl = true;
+    } else {
+        // For any other platform, we just ensure it's a valid http URL for now
+        isValidUrl = true;
+    }
 
     const coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : 5;
     const totalCost = count * coinsEach;
@@ -2270,7 +2453,7 @@ function selectPaymentMethod(method) {
             <div style="color:#555;margin-bottom:8px;">Account Title: Viral Loop</div>
             <div style="font-size:1.3rem;font-weight:bold;color:#c0392b;">Amount: Rs. ${state.selectedPackage.priceInRs || (state.selectedPackage.price * 278)} (≈ $${state.selectedPackage.price})</div>
             <div style="margin-top:10px; text-align:center;">
-                <img src="/uploads/qr_jazzcash.jpg" alt="JazzCash QR" style="max-width:200px; border-radius:10px; border:2px solid var(--primary);">
+                <img src="/qr_jazzcash.jpg" alt="JazzCash QR" style="max-width:200px; border-radius:10px; border:2px solid var(--primary);">
                 <div style="color:var(--text-sub); font-size:0.9rem; margin-top:5px;">Scan to Pay via JazzCash App</div>
             </div>
         `;
@@ -2281,7 +2464,7 @@ function selectPaymentMethod(method) {
             <div style="color:#555;margin-bottom:8px;">Coin & Network: <strong style="color:var(--gold)">USDT (ERC20)</strong> <br>Account Title: Viral Loop</div>
             <div style="font-size:1.3rem;font-weight:bold;color:#c0392b;">Amount: $${state.selectedPackage.price}</div>
             <div style="margin-top:10px; text-align:center;">
-                <img src="/uploads/qr_usdt.jpg" alt="USDT QR" style="max-width:200px; border-radius:10px; border:2px solid var(--gold);">
+                <img src="/qr_usdt.jpg" alt="USDT QR" style="max-width:200px; border-radius:10px; border:2px solid var(--gold);">
                 <div style="color:var(--text-sub); font-size:0.9rem; margin-top:5px;">Scan to Pay via Crypto Wallet</div>
             </div>
         `;
@@ -2309,6 +2492,18 @@ async function submitPayment() {
 
     if (state.directOrder && !targetUrl) return showToast('Please enter the Target URL', 'error');
     if (!txId) return showToast('Please enter the Transaction ID (TID / TxID)', 'error');
+    
+    // TXID Validation
+    if (state.selectedPaymentMethod === 'jazzcash') {
+        if (!/^\d{11,12}$/.test(txId)) {
+            return showToast('Invalid TID! EasyPaisa/JazzCash TID must be exactly 11 or 12 numbers (no English letters).', 'error');
+        }
+    } else if (state.selectedPaymentMethod === 'binance') {
+        if (txId.length < 8) {
+            return showToast('Invalid Binance TxID or Pay ID!', 'error');
+        }
+    }
+
     if (!screenshot) return showToast('Please upload payment screenshot', 'error');
     if (!state.selectedPackage) return showToast('Please select a package', 'error');
 
@@ -2480,15 +2675,31 @@ async function initApp() {
 window.onload = initApp;
 
 // Heartbeat Interval
-setInterval(() => {
+setInterval(async () => {
     if (state.token) {
         fetch(`${API_URL}/users/heartbeat`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${state.token}` }
         }).catch(e => console.log('Heartbeat failed'));
 
+        try {
+            const meRes = await api.auth.me();
+            if (meRes && meRes.user) {
+                state.user = meRes.user;
+                updateCoinDisplay(state.user.coins);
+            }
+        } catch(e) {}
+
         // Also poll notifications
         loadNotifications();
+
+        // Auto refresh My Campaigns page if we are on it and review modal is not open
+        if (state.currentPage === 'mychannel' && !document.getElementById('ownerReviewModal')) {
+            buildMyChannelPage().then(h => {
+                const app = document.getElementById('app');
+                if (app && state.currentPage === 'mychannel') app.innerHTML = h;
+            });
+        }
     }
 }, 15000); 
 

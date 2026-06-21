@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -10,11 +11,13 @@ datasource db {
 model User {
   id               Int                @id @default(autoincrement())
   name             String
+  uiId             String             @unique @default(uuid())
   email            String             @unique
   password_hash    String
   role             String             @default("user") // "user" or "admin"
   coins_balance    Int                @default(0)
   status           String             @default("active") // "active", "warned", "banned"
+  country          String?            @default("Unknown")
   
   // Advanced Features
   isVIP            Boolean            @default(false)
