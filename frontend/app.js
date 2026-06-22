@@ -258,6 +258,7 @@ function loadMonetagAds() {
     
     monetagLoaded = true;
     
+    /*
     // Push Notification Ad
     const pushScript = document.createElement('script');
     pushScript.src = "https://5gvci.com/act/files/tag.min.js?z=11160140";
@@ -269,6 +270,7 @@ function loadMonetagAds() {
     const bannerScript = document.createElement('script');
     bannerScript.innerHTML = `(function(s){s.dataset.zone='11160142',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`;
     document.body.appendChild(bannerScript);
+    */
 }
 
 function initUserUI() {
