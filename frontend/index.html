@@ -67,7 +67,7 @@
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
+                <div class="sidebar-header">
             <div id="sidebarProfile" style="text-align:left; padding-bottom:10px;">
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
                     <div id="sidebarAvatar" style="width:45px; height:45px; background:var(--primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem; color:#fff;">U</div>
@@ -80,7 +80,10 @@
                     </div>
                 </div>
             </div>
-            <h3 style="color:var(--gold); margin-top:10px;"><i class="fas fa-bars"></i> Menu</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <h3 onclick="closeSidebar()" style="color:var(--gold); margin:0; cursor:pointer;" title="Close Menu"><i class="fas fa-bars"></i> Menu</h3>
+                <i class="fas fa-times" onclick="closeSidebar()" style="color:var(--gold); font-size:1.5rem; cursor:pointer;" title="Close Sidebar"></i>
+            </div>
         </div>
         <div class="sidebar-menu">
             <div class="sidebar-item active" onclick="showPage('home'); closeSidebar();"><i class="fas fa-home"></i> Home</div>
