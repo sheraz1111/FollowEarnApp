@@ -391,10 +391,19 @@ app.get('/api/platforms', async (req, res) => {
             platforms = await prisma.platform.findMany();
         }
         
+        // Ensure "Website / App" exists for Custom Campaigns
+        let customPlat = platforms.find(p => p.name === 'Website / App' || p.name === 'Website/App');
+        if (!customPlat) {
+            try {
+                customPlat = await prisma.platform.create({ data: { name: 'Website / App' } });
+                platforms.push(customPlat);
+            } catch(e) {}
+        }
+        
         res.json(platforms);
-    } catch (e) {
-        console.error("Error fetching platforms:", e);
-        res.status(500).json({ error: e.message || "Failed to fetch platforms", stack: e.stack });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
