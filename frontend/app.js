@@ -1433,7 +1433,6 @@ async function buildEarnPage() {
             <div class="stat-card" style="border-color:var(--gold)">
                 <div style="color:var(--gray);font-size:0.85rem;margin-bottom:8px;">Your Coins</div>
                 <h3 id="earnCoinsText"><i class="fas fa-coins"></i> ${state.user.coins}</h3>
-                <div style="font-size:0.8rem;color:var(--gray);">≈ Rs. ${Math.floor(state.user.coins * 0.4)}</div>
             </div>
             <div class="stat-card" style="border-color:var(--green);cursor:pointer;" onclick="claimDailyBonus()">
                 <div style="color:var(--gray);font-size:0.85rem;margin-bottom:8px;">${streakText}</div>
