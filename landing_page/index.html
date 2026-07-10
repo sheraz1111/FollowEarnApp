@@ -197,10 +197,13 @@
 
         <div class="buttons-wrapper">
             <!-- Web / Laptop Button -->
-            <a href="https://followearnapp.vercel.app/" class="download-btn btn-web" target="_blank">
-                <i class="fas fa-laptop"></i>
-                For Web / Laptop Users
-            </a>
+            <div style="position: relative;">
+                <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: var(--bg-main); font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 10px; z-index: 2; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">RECOMMENDED</span>
+                <a href="https://followearnapp.vercel.app/" class="download-btn btn-web" target="_blank">
+                    <i class="fas fa-laptop"></i>
+                    For Web / Laptop Users
+                </a>
+            </div>
 
             <!-- iPhone Button -->
             <a href="https://followearnapp.vercel.app/" class="download-btn btn-ios" target="_blank">
@@ -209,8 +212,7 @@
             </a>
 
             <!-- Android Button -->
-            <!-- Note: User will replace '#' with the actual direct APK link later -->
-            <a href="#" class="download-btn btn-android" id="androidBtn">
+            <a href="ViralLoop.apk" download class="download-btn btn-android" id="androidBtn">
                 <i class="fab fa-android"></i>
                 Download For Android
             </a>
@@ -221,15 +223,6 @@
         </div>
     </div>
 
-    <script>
-        // Simple script to handle Android click until link is provided
-        document.getElementById('androidBtn').addEventListener('click', function(e) {
-            const href = this.getAttribute('href');
-            if(href === '#' || href === '') {
-                e.preventDefault();
-                alert('Android App is coming soon! Please use the Web version for now.');
-            }
-        });
-    </script>
+
 </body>
 </html>

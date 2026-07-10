@@ -1,15 +1,20 @@
 {
-  "name": "ViralEarn",
-  "short_name": "ViralEarn",
-  "description": "Earn coins by completing social tasks.",
+  "name": "ViralLoop",
+  "short_name": "ViralLoop",
+  "description": "Earn rewards by following campaigns",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#3b82f6",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "/icon.png",
-      "sizes": "1024x1024",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }

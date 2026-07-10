@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { OAuth2Client } from 'google-auth-library';
-
+import { ApifyClient } from 'apify-client';
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -118,7 +118,7 @@ app.post('/api/login', async (req, res) => {
         });
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
     } catch (e) {
         console.error('Login error:', e);
         res.status(500).json({ error: 'Internal server error during login.' });
@@ -153,7 +153,7 @@ app.post('/api/google-login', async (req, res) => {
         }
         
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
     } catch (e) {
         res.status(400).json({ error: 'Invalid Google token' });
     }
@@ -302,7 +302,7 @@ app.post('/api/auth/google', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
     } catch(err) {
         console.error("Google Auth Error:", err);
         res.status(400).json({ error: 'Google Authentication failed' });
@@ -311,7 +311,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 app.get('/api/me', authenticate, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, referralCode: user.referralCode, isVIP: user.isVIP, uiId: user.uiId, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, referralCode: user.referralCode, isVIP: user.isVIP, uiId: user.uiId, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
 });
 
 app.get('/api/admin/direct-orders', authenticate, async (req, res) => {
@@ -399,12 +399,38 @@ app.get('/api/platforms', async (req, res) => {
 });
 
 // --- FOLLOW REQUESTS ---
-app.get('/api/requests', authenticate, async (req, res) => {
-    const requests = await prisma.followRequest.findMany({
-        where: { status: 'active', slots_remaining: { gt: 0 } },
-        include: { platform: true, user: { select: { name: true, lastSeen: true } } }
-    });
-    res.json(requests);
+app.get('/api/requests', async (req, res) => {
+    try {
+        // Optional auth: if token provided, filter out completed campaigns
+        let completedRequestIds = [];
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            try {
+                const token = authHeader.split(' ')[1];
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                const mySubmissions = await prisma.submission.findMany({
+                    where: { userId: decoded.userId },
+                    select: { requestId: true }
+                });
+                completedRequestIds = mySubmissions.map(s => s.requestId);
+            } catch (e) {
+                // Invalid token - treat as guest, show all campaigns
+            }
+        }
+
+        const requests = await prisma.followRequest.findMany({
+            where: { 
+                status: 'active', 
+                slots_remaining: { gt: 0 },
+                ...(completedRequestIds.length > 0 ? { id: { notIn: completedRequestIds } } : {})
+            },
+            include: { platform: true, user: { select: { name: true, lastSeen: true } } }
+        });
+        res.json(requests);
+    } catch (e) {
+        console.error("Error fetching requests:", e);
+        res.status(500).json({ error: "Failed to fetch requests" });
+    }
 });
 
 app.get('/api/requests/mine', authenticate, async (req, res) => {
@@ -449,8 +475,83 @@ app.delete('/api/requests/:id', authenticate, async (req, res) => {
     res.json({ success: true, refunded: refund });
 });
 
+// Save Social Accounts
+app.post('/api/users/social-accounts', authenticate, async (req, res) => {
+    const { tiktokUsername, youtubeChannelUrl, instagramUsername } = req.body;
+    try {
+        let updateData = {};
+        if (tiktokUsername !== undefined) updateData.tiktokUsername = tiktokUsername;
+        if (youtubeChannelUrl !== undefined) updateData.youtubeChannelUrl = youtubeChannelUrl;
+        if (instagramUsername !== undefined) updateData.instagramUsername = instagramUsername;
+
+        await prisma.user.update({
+            where: { id: req.user.id },
+            data: updateData
+        });
+        res.json({ message: 'Social accounts updated successfully' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Server error updating accounts' });
+    }
+});
+
+// Auto Verify Task via Apify
+app.post('/api/tasks/verify-auto', authenticate, async (req, res) => {
+    const { requestId } = req.body;
+    try {
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        const request = await prisma.followRequest.findUnique({ 
+            where: { id: parseInt(requestId) },
+            include: { platform: true }
+        });
+
+        if (!request || request.status !== 'active') return res.status(400).json({ error: 'Task not available' });
+        if (request.verificationType !== 'auto') return res.status(400).json({ error: 'This task requires manual screenshot verification' });
+
+        // Simple placeholder logic. You will need to implement specific Apify Actor calls here.
+        // const apifyClient = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+        // Example: await apifyClient.actor('actor_id').call({ ... });
+        
+        // Simulating verification success for now
+        let isVerified = true;
+        
+        if (!isVerified) {
+            return res.status(400).json({ error: 'Verification failed. We could not find your username in the list.' });
+        }
+
+        // Process successful verification
+        await prisma.$transaction([
+            prisma.submission.create({
+                data: {
+                    userId: req.user.id,
+                    requestId: request.id,
+                    screenshot_url: 'AUTO_VERIFIED',
+                    status: 'approved',
+                    reward_coins: request.reward_coins
+                }
+            }),
+            prisma.user.update({
+                where: { id: req.user.id },
+                data: { coins_balance: { increment: request.reward_coins }, totalTasksCompleted: { increment: 1 } }
+            }),
+            prisma.followRequest.update({
+                where: { id: request.id },
+                data: {
+                    completed_slots: { increment: 1 },
+                    status: request.completed_slots + 1 >= request.total_slots ? 'completed' : 'active'
+                }
+            })
+        ]);
+
+        res.json({ message: 'Verified successfully!', coins: request.reward_coins });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error during auto verification' });
+    }
+});
+
 app.post('/api/requests', authenticate, async (req, res) => {
-    const { platformId, target_link, reward_coins, slots, type, auto_approve_hours } = req.body;
+    const { platformId, target_link, reward_coins, slots, type, auto_approve_hours, verificationType } = req.body;
     const totalCost = reward_coins * slots;
     
     // Check balance
@@ -479,8 +580,9 @@ app.post('/api/requests', authenticate, async (req, res) => {
                 reward_coins: parseInt(reward_coins),
                 slots_remaining: parseInt(slots),
                 total_slots: parseInt(slots),
-                auto_approve_hours: auto_approve_hours ? parseInt(auto_approve_hours) : 24,
-                type: type || 'subscribe'
+                auto_approve_hours: parseFloat(auto_approve_hours) || 24,
+                type: type || 'subscribe',
+                verificationType: verificationType === 'auto' ? 'auto' : 'manual'
             }
         })
     ];
@@ -490,13 +592,13 @@ app.post('/api/requests', authenticate, async (req, res) => {
         transactionOperations.push(
             prisma.user.update({
                 where: { id: user.referredById },
-                data: { coins_balance: { increment: 50 } }
+                data: { coins_balance: { increment: 150 } }
             }),
             prisma.transaction.create({
-                data: { userId: user.referredById, type: 'earn', amount: 50 }
+                data: { userId: user.referredById, type: 'earn', amount: 150 }
             })
         );
-        console.log(`Awarded 50 referral bonus coins to user ${user.referredById} because ${user.id} ran their 2nd campaign!`);
+        console.log(`Awarded 150 referral bonus coins to user ${user.referredById} because ${user.id} ran their 2nd campaign!`);
     }
 
     await prisma.$transaction(transactionOperations);
@@ -619,7 +721,7 @@ app.patch('/api/submissions/:id/approve', authenticate, async (req, res) => {
         earnedCoins = Math.floor(earnedCoins * 1.1); // 10% bonus for VIP
     }
 
-    await prisma.$transaction([
+    const txs = [
         prisma.submission.update({
             where: { id: subId },
             data: { status: 'approved', reviewed_by: req.user.id }
@@ -637,7 +739,44 @@ app.patch('/api/submissions/:id/approve', authenticate, async (req, res) => {
         prisma.notification.create({
             data: { userId: submission.userId, message: `Your screenshot for Campaign #${submission.request.id} was approved by the owner! +${earnedCoins} coins` }
         })
-    ]);
+    ];
+
+    // --- Lifetime MLM Referral Bonus Logic ---
+    if (submitter.referredById) {
+        const refBonus1 = Math.max(1, Math.floor(earnedCoins * 0.02)); // 2% bonus, min 1 coin
+        txs.push(
+            prisma.user.update({
+                where: { id: submitter.referredById },
+                data: { coins_balance: { increment: refBonus1 } }
+            }),
+            prisma.transaction.create({
+                data: { userId: submitter.referredById, type: 'earn', amount: refBonus1, related_submission_id: subId }
+            }),
+            prisma.notification.create({
+                data: { userId: submitter.referredById, message: `You earned ${refBonus1} coins (2% Referral Bonus) from ${submitter.name}'s task!` }
+            })
+        );
+        
+        // Level 2 Referral
+        const level1 = await prisma.user.findUnique({ where: { id: submitter.referredById } });
+        if (level1 && level1.referredById) {
+            const refBonus2 = Math.max(1, Math.floor(earnedCoins * 0.02));
+            txs.push(
+                prisma.user.update({
+                    where: { id: level1.referredById },
+                    data: { coins_balance: { increment: refBonus2 } }
+                }),
+                prisma.transaction.create({
+                    data: { userId: level1.referredById, type: 'earn', amount: refBonus2, related_submission_id: subId }
+                }),
+                prisma.notification.create({
+                    data: { userId: level1.referredById, message: `You earned ${refBonus2} coins (2% Level 2 Referral Bonus) from ${submitter.name}'s task!` }
+                })
+            );
+        }
+    }
+
+    await prisma.$transaction(txs);
     res.json({ success: true });
 });
 
@@ -988,23 +1127,109 @@ app.patch('/api/admin/deposits/:id/reject', authenticate, async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/api/store/buy-coins', authenticate, async (req, res) => {
-    // This is a mockup for Stripe/PayPal integration
-    const { amount } = req.body;
-    const coinsToAdd = parseInt(amount);
+app.post('/api/store/creem-checkout', authenticate, async (req, res) => {
+    const { amount, price } = req.body;
     
-    if (isNaN(coinsToAdd) || coinsToAdd <= 0) return res.status(400).json({ error: 'Invalid amount' });
+    // We expect the frontend to pass the correct product_id or we map it here.
+    // For now, since we don't have product IDs, we map them:
+    const PRODUCT_MAP = {
+        1000: process.env.CREEM_PROD_1000 || 'prod_placeholder_1000',
+        5000: process.env.CREEM_PROD_5000 || 'prod_placeholder_5000'
+    };
     
-    const user = await prisma.user.update({
-        where: { id: req.user.id },
-        data: { coins_balance: { increment: coinsToAdd } }
-    });
-    
-    await prisma.transaction.create({
-        data: { userId: user.id, type: 'earn', amount: coinsToAdd }
-    });
-    
-    res.json({ success: true, coins: user.coins_balance });
+    const productId = PRODUCT_MAP[amount];
+    if (!productId) return res.status(400).json({ error: 'Invalid coin amount package.' });
+
+    try {
+        const response = await fetch('https://api.creem.io/v1/checkouts', {
+            method: 'POST',
+            headers: {
+                'x-api-key': process.env.CREEM_API_KEY || 'creem_3nf4iwV0KxXopRcZlJYqz',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                product_id: productId,
+                success_url: req.headers.origin + '/?creem_session_id={CHECKOUT_SESSION_ID}&amount=' + amount,
+                metadata: {
+                    userId: req.user.id,
+                    amount: amount,
+                    price: price
+                }
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            console.error('Creem checkout error:', data);
+            return res.status(500).json({ error: 'Payment gateway error', details: data });
+        }
+
+        res.json({ checkout_url: data.checkout_url, session_id: data.id });
+    } catch (e) {
+        console.error('Creem error:', e);
+        res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+});
+
+app.post('/api/store/creem-verify', authenticate, async (req, res) => {
+    const { session_id, amount } = req.body;
+    if (!session_id) return res.status(400).json({ error: 'Session ID required' });
+
+    try {
+        // Fetch session status from Creem
+        const response = await fetch(`https://api.creem.io/v1/checkouts/${session_id}`, {
+            method: 'GET',
+            headers: {
+                'x-api-key': process.env.CREEM_API_KEY || 'creem_3nf4iwV0KxXopRcZlJYqz'
+            }
+        });
+
+        const session = await response.json();
+        if (!response.ok) return res.status(400).json({ error: 'Failed to verify session' });
+
+        // Ensure it's paid
+        if (session.status !== 'paid' && session.status !== 'completed' && session.status !== 'succeeded') {
+            return res.status(400).json({ error: 'Payment is not completed yet.' });
+        }
+
+        // Prevent double crediting
+        const existing = await prisma.deposit.findFirst({ where: { txId: session_id } });
+        if (existing) {
+            return res.json({ success: true, message: 'Already credited' });
+        }
+
+        const coinsToAdd = parseInt(amount) || parseInt(session.metadata?.amount) || 0;
+        if (coinsToAdd <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+        const [user] = await prisma.$transaction([
+            prisma.user.update({
+                where: { id: req.user.id },
+                data: { coins_balance: { increment: coinsToAdd } }
+            }),
+            prisma.deposit.create({
+                data: {
+                    userId: req.user.id,
+                    amount: coinsToAdd,
+                    price: parseFloat(session.metadata?.price || 0),
+                    method: 'creem',
+                    txId: session_id,
+                    status: 'approved'
+                }
+            }),
+            prisma.transaction.create({
+                data: { userId: req.user.id, type: 'earn', amount: coinsToAdd }
+            }),
+            prisma.notification.create({
+                data: { userId: req.user.id, message: `Your Credit/Debit Card payment was successful! +${coinsToAdd} coins` }
+            })
+        ]);
+
+        res.json({ success: true, coins: user.coins_balance });
+
+    } catch (e) {
+        console.error('Creem verify error:', e);
+        res.status(500).json({ error: 'Server error during verification' });
+    }
 });
 
 app.post('/api/store/buy-vip', authenticate, async (req, res) => {
@@ -1443,6 +1668,71 @@ app.get('/api/cron/auto-approve', async (req, res) => {
         res.status(500).json({ error: 'Cron error' });
     }
 });
+
+// --- Other Apps (Sidebar Links) ---
+app.get('/api/other-apps', async (req, res) => {
+    try {
+        const apps = await prisma.otherApp.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json(apps);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch apps' });
+    }
+});
+
+app.post('/api/other-apps', authenticate, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    const { name, url } = req.body;
+    if (!name || !url) return res.status(400).json({ error: 'Name and URL required' });
+    try {
+        const newApp = await prisma.otherApp.create({ data: { name, url } });
+        res.json(newApp);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to add app' });
+    }
+});
+
+app.delete('/api/other-apps/:id', authenticate, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    try {
+        await prisma.otherApp.delete({ where: { id: parseInt(req.params.id) } });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete app' });
+    }
+});
+
+// --- Tutorial Links (How to Work) ---
+app.get('/api/tutorial-links', async (req, res) => {
+    try {
+        const links = await prisma.tutorialLink.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json(links);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch tutorial links' });
+    }
+});
+
+app.post('/api/tutorial-links', authenticate, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    const { title, url } = req.body;
+    if (!title || !url) return res.status(400).json({ error: 'Title and URL required' });
+    try {
+        const newLink = await prisma.tutorialLink.create({ data: { title, url } });
+        res.json(newLink);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to add tutorial link' });
+    }
+});
+
+app.delete('/api/tutorial-links/:id', authenticate, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    try {
+        await prisma.tutorialLink.delete({ where: { id: parseInt(req.params.id) } });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete tutorial link' });
+    }
+});
+
 
 const PORT = process.env.PORT || 5000;
 

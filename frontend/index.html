@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ViralEarn - Follow & Earn</title>
+    <title>ViralLoop - Get Free Real Followers & Earn</title>
+    <link rel="icon" href="/icon.png" type="image/png">
+    <meta name="description" content="Get free followers instantly with no verification! Increase followers free on Instagram, TikTok, rumble, and other platforms. Best safe follow for follow app and free followers generator.">
+    <meta name="keywords" content="free followers, free instagram followers, free tiktok followers, get free followers instantly, free followers no verification, free likes for instagram, increase followers free, follow for follow app, sub4sub website, free youtube subscribers, free instagram followers app, insta likes free, tiktok followers free app, free tiktok fans, tiktok likes free no login, sub4sub youtube, youtube views free, free twitter followers, x followers free app, free reddit upvotes, reddit karma free, how to get free followers on instagram 2026, best free followers app no login, real free followers app safe, free followers without password, free followers no survey, free followers generator, follow4follow app free, like for like app, grow followers free app, free social media followers, earn coins online, earn money online free, complete tasks earn coins, social media exchange, smm panel free, follow and earn, viraloop, viral loop, free followers app pakistan, free followers app india, free followers urdu, tiktok followers free pakistan, instagram followers free india, earn free coins, social media booster, follow earn coins app, get followers free no login, free sub4sub app, youtube sub4sub free, instagram follow unfollow app, tiktok follow for follow, free social media growth, earn money by following, follow task earn, daily task earn app, free followers daily, followers booster app free, how to get free tiktok followers 2026, how to get free instagram followers 2026, free followers without human verification, get real free followers, free followers app for android, free follower website no login, free instagram followers generator, free instagram followers trial, free instagram followers bot, free instagram followers no survey, free instagram followers hack, instagram follow back free, instagram followers free 2026, free tiktok followers generator, free tiktok followers and likes, free tiktok followers bot, free tiktok followers without verification, free tiktok followers real, tiktok follow back free, tiktok followers free 2026, free youtube subscribers generator, free youtube subscribers bot, free youtube subscribers instantly, free youtube subscribers no pay, free youtube subscribers and views, free youtube subscribers app, youtube sub4sub free, youtube follow back free, free twitter followers generator, free twitter followers instantly, free twitter followers bot, free twitter followers daily, free twitter followers no password, free twitter followers fast, twitter follow back free, x followers free 2026, free telegram members, free telegram channel members, free telegram subscribers, telegram follow back free, free telegram stars, telegram members booster free, free kick followers, kick followers bot, kick bot followers free, kick follow back free, free reddit upvotes, reddit karma free, reddit followers free, facebook follow back free, free facebook followers, facebook followers booster free, facebook page likes free, free facebook page followers, facebook followers free 2026, follow back app free, follow for follow free, follow and earn coins, follow and earn money, follow back websites free, follow4follow free app, get followers follow back, auto follow back free, follow unfollow app free, follow back fast free, earn by following social media, complete task earn coins, daily follow earn coins, follow earn withdraw, social media follow earn, viraloop, viraloop website, viraloop app, viral loop followers free, viral loop earn coins, viralloop free followers, smm panel free, sub4sub all platforms, follow exchange free, earn coins social media, grow followers free app, free followers all platforms, real followers free, followers booster free app 2026">
     
     <!-- PWA / iOS Support -->
     <link rel="manifest" href="/manifest.json">
@@ -12,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="ViralEarn">
     <link rel="apple-touch-icon" href="/icon.png">
     <meta name="theme-color" content="#0f172a">
-
+    <link rel="manifest" href="/manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
     <link rel="stylesheet" href="styles.css?v=11">
@@ -67,7 +70,7 @@
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-                <div class="sidebar-header">
+        <div class="sidebar-header">
             <div id="sidebarProfile" style="text-align:left; padding-bottom:10px;">
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
                     <div id="sidebarAvatar" style="width:45px; height:45px; background:var(--primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem; color:#fff;">U</div>
@@ -109,6 +112,15 @@
                 <i class="fas fa-user-tie"></i> SUPER ADMIN PANEL
             </div>
 
+            <!-- Other Apps Dropdown -->
+            <div class="sidebar-item dropdown-toggle" onclick="toggleOtherAppsDropdown()" style="justify-content:space-between; margin-top:10px; border-top:1px solid #333; padding-top:15px;">
+                <div><i class="fas fa-layer-group" style="color:var(--primary);"></i> My Other Apps</div>
+                <i class="fas fa-chevron-down" id="otherAppsChevron" style="transition: transform 0.3s; font-size: 0.8rem; color:var(--gray);"></i>
+            </div>
+            <div id="otherAppsDropdown" style="display:none; background:rgba(0,0,0,0.2); flex-direction:column; padding-bottom:10px; padding-left:15px;">
+                <div class="sidebar-item" style="color:var(--gray);font-size:0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+            </div>
+
             <hr style="border-color:#333; margin: 10px 0;">
             <div style="padding:15px 20px;">
                 <div style="color:var(--gold);font-weight:bold;margin-bottom:10px;font-size:0.9rem;"><i class="fas fa-globe"></i> Language</div>
@@ -127,7 +139,9 @@
             </div>
             <hr style="border-color:#333; margin: 10px 0;">
             <div class="sidebar-item" onclick="showPage('privacy'); closeSidebar();"><i class="fas fa-user-lock"></i> Privacy Policy</div>
+            <div class="sidebar-item" onclick="showPage('terms'); closeSidebar();"><i class="fas fa-file-contract"></i> Terms of Service</div>
             <div class="sidebar-item" onclick="showPage('disclaimer'); closeSidebar();"><i class="fas fa-exclamation-circle"></i> Disclaimer</div>
+            <div class="sidebar-item" onclick="showPage('contact'); closeSidebar();"><i class="fas fa-envelope"></i> Contact Us</div>
             <div class="sidebar-item" onclick="showPage('rateus'); closeSidebar();"><i class="fas fa-star"></i> Rate Us</div>
             <div class="sidebar-item" onclick="toggleChatWidget(); closeSidebar();"><i class="fas fa-comment-dots"></i> Global Live Chat</div>
             <div class="sidebar-item" onclick="auth.logout()" style="color:#ff4757; border-top:1px solid #333; margin-top:10px;">
@@ -171,7 +185,10 @@
     <div class="notification-panel" id="notificationPanel">
         <div class="notification-header" style="display:flex; justify-content:space-between; align-items:center;">
             <span><i class="fas fa-bell"></i> Notifications</span>
-            <i class="fas fa-cog" style="cursor:pointer; color:var(--gold);" onclick="showNotificationSettings()" title="Notification Sound Settings"></i>
+            <div style="display:flex; gap: 15px; align-items: center;">
+                <i class="fas fa-cog" style="cursor:pointer; color:var(--gold);" onclick="showNotificationSettings()" title="Notification Sound Settings"></i>
+                <i class="fas fa-times" style="cursor:pointer; color:var(--gray);" onclick="toggleNotifications()" title="Close Notifications"></i>
+            </div>
         </div>
         <div id="notificationList"><div style="padding:20px;color:var(--gray);text-align:center;">No notifications</div></div>
     </div>
@@ -180,6 +197,9 @@
     <div class="platform-bar hidden" id="platformBar">
         <div class="platform-btn active" id="pb-all" onclick="filterPlatform('all', this)">
             <i class="fas fa-globe"></i> All
+        </div>
+        <div class="platform-btn" id="pb-custom" onclick="filterPlatform('custom', this)" style="background:var(--primary);color:#fff;border-color:var(--primary);">
+            <i class="fas fa-desktop"></i> Website / App
         </div>
         <div class="platform-btn" id="pb-youtube" onclick="filterPlatform('youtube', this)" style="background:#ff0000;color:#fff;border-color:#ff0000;">
             <i class="fab fa-youtube"></i> YouTube
@@ -205,7 +225,24 @@
         <div class="platform-btn" id="pb-x" onclick="filterPlatform('x', this)">
             <i class="fab fa-twitter"></i> X / Twitter
         </div>
+        <div class="platform-btn" id="pb-telegram" onclick="filterPlatform('telegram', this)">
+            <i class="fab fa-telegram"></i> Telegram
+        </div>
+        <div class="platform-btn" id="pb-spotify" onclick="filterPlatform('spotify', this)">
+            <i class="fab fa-spotify"></i> Spotify
+        </div>
+        <div class="platform-btn" id="pb-discord" onclick="filterPlatform('discord', this)">
+            <i class="fab fa-discord"></i> Discord
+        </div>
+        <div class="platform-btn" id="pb-reddit" onclick="filterPlatform('reddit', this)">
+            <i class="fab fa-reddit"></i> Reddit
+        </div>
+        <div class="platform-btn" id="pb-threads" onclick="filterPlatform('threads', this)">
+            <i class="fas fa-at"></i> Threads
+        </div>
     </div>
+
+
 
     <!-- Main Pages Container -->
     <main id="app" class="main"></main>
@@ -260,7 +297,7 @@
     <!-- ========== MODALS ========== -->
 
     <!-- Auth Modal -->
-    <div class="admin-login-modal active" id="userAuthModal" style="z-index:20000;">
+    <div class="admin-login-modal" id="userAuthModal" style="z-index:20000;">
         <div class="admin-login-box">
             <h2 id="authTitle"><i class="fas fa-user-circle"></i> Welcome</h2>
             <div style="text-align:center;margin-bottom:20px;">
@@ -339,6 +376,10 @@
                     <h3 style="color:var(--gold)"><i class="fas fa-comment"></i> Comment</h3>
                     <p style="color:var(--gray);margin-top:5px">8 coins per comment</p>
                 </div>
+                <div class="campaign-type" onclick="selectCampaignType('custom')">
+                    <h3 style="color:#10b981"><i class="fas fa-check-double"></i> Custom Task / App</h3>
+                    <p style="color:var(--gray);margin-top:5px">10 coins per task</p>
+                </div>
             </div>
 
             <div class="form-step" id="campaignFormStep">
@@ -346,7 +387,7 @@
                 <h3 id="campaignFormTitle" style="color:var(--primary);margin-bottom:20px"></h3>
                 <div class="form-group">
                     <label style="color:var(--gold);display:block;margin-bottom:6px">Platform *</label>
-                    <select id="campaignPlatformSelect" class="form-input">
+                    <select id="campaignPlatformSelect" class="form-input" onchange="updateCampaignLabels()">
                         <option value="">Loading platforms...</option>
                     </select>
                 </div>
@@ -355,8 +396,13 @@
                     <input class="form-input" id="campaignName" placeholder="Enter name or leave blank" type="text" maxlength="50">
                 </div>
                 <div class="form-group">
-                    <label style="color:var(--gold);display:block;margin-bottom:6px">Target URL *</label>
+                    <label id="campaignUrlLabel" style="color:var(--gold);display:block;margin-bottom:6px">Target URL *</label>
                     <input class="form-input" id="campaignUrl" placeholder="https://..." type="url" onblur="fetchUrlMetadata(this.value)">
+                </div>
+                <div class="form-group" id="campaignInstructionsGroup" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; border:1px dashed var(--gold);">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px"><i class="fas fa-clipboard-list"></i> Task Instructions *</label>
+                    <div style="font-size:0.75rem; color:var(--gray); margin-bottom:8px; line-height:1.4;">یہاں آپ اپنی ویب سائٹ، ایپ یا کسی بھی قسم کا ریویو لینے کے لیے یوزرز کو ہدایات دے سکتے ہیں۔ (مثال: ویب سائٹ پر جائیں، سائن اپ کریں اور ڈیش بورڈ کا سکرین شاٹ بھیجیں)</div>
+                    <textarea class="form-input" id="campaignInstructions" placeholder="E.g. Visit the website, click on 'Sign Up', wait 3 minutes, and upload a screenshot of your dashboard." rows="3" style="resize:vertical;"></textarea>
                 </div>
                 <div id="campaignMetadataPreview" style="display:none; background:var(--card-solid); border:1px solid var(--border-main); border-radius:10px; padding:10px; margin-bottom:15px; align-items:center; gap:10px;">
                     <img id="campaignPreviewImg" src="" style="width:40px;height:40px;border-radius:50%;object-fit:cover;display:none;">
@@ -366,6 +412,7 @@
                     <label style="color:var(--gold);display:block;margin-bottom:6px">Quantity Needed (Min: 10) *</label>
                     <input class="form-input" id="campaignCount" min="10" max="10000" placeholder="10" type="number" oninput="calcCampaignCost()">
                 </div>
+
                 <div class="form-group">
                     <label style="color:var(--gold);display:block;margin-bottom:6px">
                         Auto-Approve Time <i class="fas fa-info-circle"></i>
@@ -377,6 +424,10 @@
                         </div>
                     </label>
                     <select id="campaignAutoApprove" class="form-input">
+                        <option value="0.08">5 Minutes</option>
+                        <option value="0.16">10 Minutes</option>
+                        <option value="0.5">30 Minutes</option>
+                        <option value="1">1 Hour</option>
                         <option value="2">2 Hours</option>
                         <option value="6">6 Hours</option>
                         <option value="12">12 Hours</option>
@@ -525,6 +576,15 @@
 
             <div class="payment-methods" id="paymentMethodsSection">
                 <h3 style="margin:0 0 20px">Select Payment Method:</h3>
+                <div class="payment-method" onclick="selectPaymentMethod('creem')">
+                    <div style="display:flex;align-items:center;gap:15px">
+                        <i class="fas fa-credit-card" style="font-size:2rem;color:#7C3AED"></i>
+                        <div>
+                            <div style="font-weight:bold">Credit/Debit Card (Auto)</div>
+                            <div style="font-size:0.85rem;color:var(--gray)">Instant Automated Credit via Creem</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="payment-method" onclick="selectPaymentMethod('jazzcash')">
                     <div style="display:flex;align-items:center;gap:15px">
                         <i class="fas fa-mobile-alt" style="font-size:2rem;color:var(--primary)"></i>
@@ -561,19 +621,21 @@
                     <label style="display:block;margin-bottom:8px;color:var(--gold)">Target URL (Channel/Page Link) *</label>
                     <input class="form-input" id="directTargetUrl" placeholder="Enter link for followers/subscribers" type="url">
                 </div>
-                <div class="form-group">
-                    <label style="display:block;margin-bottom:8px;color:var(--gold)">Transaction ID (TID / TxID) *</label>
-                    <input class="form-input" id="paymentTxId" placeholder="Enter the 11-digit TID or Binance TxID" type="text">
-                </div>
-                <div class="form-group">
-                    <label style="display:block;margin-bottom:8px;color:var(--gold)">Upload Payment Screenshot *</label>
-                    <div class="upload-area" onclick="document.getElementById('paymentScreenshot').click()" style="padding:20px">
-                        <i class="fas fa-camera" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
-                        <p id="paymentFileLabel">Click to upload screenshot</p>
+                <div id="paymentProofSection">
+                    <div class="form-group">
+                        <label style="display:block;margin-bottom:8px;color:var(--gold)">Transaction ID (TID / TxID) *</label>
+                        <input class="form-input" id="paymentTxId" placeholder="Enter the 11-digit TID or Binance TxID" type="text">
                     </div>
-                    <input accept="image/jpeg,image/png,image/jpg" id="paymentScreenshot" onchange="handlePaymentScreenshot(this)" style="display:none" type="file">
-                    <div id="paymentPreview" style="display:none;margin-top:10px;text-align:center;">
-                        <img id="paymentPreviewImg" style="max-width:100%;max-height:150px;border-radius:10px;border:2px solid var(--gold)">
+                    <div class="form-group">
+                        <label style="display:block;margin-bottom:8px;color:var(--gold)">Upload Payment Screenshot *</label>
+                        <div class="upload-area" onclick="document.getElementById('paymentScreenshot').click()" style="padding:20px">
+                            <i class="fas fa-camera" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+                            <p id="paymentFileLabel">Click to upload screenshot</p>
+                        </div>
+                        <input accept="image/jpeg,image/png,image/jpg" id="paymentScreenshot" onchange="handlePaymentScreenshot(this)" style="display:none" type="file">
+                        <div id="paymentPreview" style="display:none;margin-top:10px;text-align:center;">
+                            <img id="paymentPreviewImg" style="max-width:100%;max-height:150px;border-radius:10px;border:2px solid var(--gold)">
+                        </div>
                     </div>
                 </div>
                 <button onclick="submitPayment()" id="paymentSubmitBtn" class="action-btn btn-payment" style="margin-top:10px;">
@@ -592,7 +654,7 @@
     </div>
 
     <script src="api.js?v=12"></script>
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=17"></script>
     
     <!-- iOS Install Prompt -->
     <div id="ios-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 10000; color: white; text-align: center; font-family: 'Inter', sans-serif;">
@@ -631,5 +693,19 @@
     
     <!-- Hidden Global Audio Player -->
     <audio id="globalVoicePlayer" style="display:none;"></audio>
+    <!-- SEO Keywords Section - Hidden from users but readable by Google -->
+    <div style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+        <h2>ViralLoop - Free Followers for All Platforms</h2>
+        <p>Get free Instagram followers generator, free Instagram followers trial, free Instagram followers bot, free Instagram followers no survey, free Instagram followers no verification, free Instagram followers instantly, free Instagram followers app, free Instagram followers hack, Instagram follow back free, Instagram followers free 2026.</p>
+        <p>Free TikTok followers generator, free TikTok followers and likes, free TikTok followers bot, free TikTok followers without verification, free TikTok followers real, free TikTok followers instantly, TikTok follow back free, TikTok followers free 2026.</p>
+        <p>Free YouTube subscribers generator, free YouTube subscribers bot, free YouTube subscribers instantly, free YouTube subscribers no pay, free YouTube subscribers and views, free YouTube subscribers app, YouTube sub4sub free, YouTube follow back free.</p>
+        <p>Free Twitter followers generator, free Twitter followers instantly, free Twitter followers bot, free Twitter followers daily, free Twitter followers no password, free Twitter followers fast, Twitter follow back free, X followers free 2026.</p>
+        <p>Free Telegram members, free Telegram channel members, free Telegram subscribers, Telegram follow back free, free Telegram stars, Telegram members booster free.</p>
+        <p>Free Kick followers, Kick followers bot, Kick bot followers free, Kick follow back free.</p>
+        <p>Free Reddit upvotes, Reddit karma free, Reddit followers free.</p>
+        <p>Facebook follow back free, free Facebook followers, Facebook followers booster free, free Facebook page followers, Facebook followers free 2026.</p>
+        <p>Follow back app free, follow for follow free, follow and earn coins, follow and earn money, follow back websites free, follow4follow free app, auto follow back free, follow unfollow app free, earn by following social media, complete task earn coins, daily follow earn coins, follow earn withdraw, social media follow earn.</p>
+        <p>ViralLoop, ViralLoop website, ViralLoop app, viral loop followers free, viral loop earn coins, ViralLoop free followers, social media exchange free, SMM panel free, sub4sub all platforms, follow exchange free, earn coins social media, grow followers free app, free followers all platforms, real followers free, followers booster free app 2026.</p>
+    </div>
 </body>
 </html>

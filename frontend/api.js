@@ -64,7 +64,9 @@ const api = {
         buyCoins: (amount) => api.request('/store/buy-coins', { method: 'POST', body: { amount } }),
         buyVip: () => api.request('/store/buy-vip', { method: 'POST' }),
         deposit: (data) => api.request('/store/deposit', { method: 'POST', body: data }),
-        directOrder: (data) => api.request('/store/direct-order', { method: 'POST', body: data })
+        directOrder: (data) => api.request('/store/direct-order', { method: 'POST', body: data }),
+        creemCheckout: (data) => api.request('/store/creem-checkout', { method: 'POST', body: data }),
+        creemVerify: (data) => api.request('/store/creem-verify', { method: 'POST', body: data })
     },
 
     admin: {

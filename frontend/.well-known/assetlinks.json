@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.followearnapp.twa",
+    "sha256_cert_fingerprints": ["73:F6:44:DF:EA:62:CB:FD:85:56:C6:BB:EF:3B:C3:85:77:C5:27:A9:E7:21:FB:D3:40:39:A7:D5:21:B3:DC:6C"]
+  }
+}]

@@ -11,7 +11,7 @@ datasource db {
 model User {
   id               Int                @id @default(autoincrement())
   name             String
-  uiId             String             @unique @default(uuid())
+  uiId             String?            @unique @default(uuid())
   email            String             @unique
   password_hash    String
   role             String             @default("user") // "user" or "admin"
@@ -43,9 +43,13 @@ model User {
   currentStreak    Int                @default(0)
   lastCheckInDate  DateTime?
   lastMonthlyBonus DateTime?
-  
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  // Linked Social Accounts
+  tiktokUsername    String?
+  youtubeChannelUrl String?
+  instagramUsername String?
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   followRequests   FollowRequest[]
   submissions      Submission[]
   transactions     Transaction[]
@@ -82,8 +86,9 @@ model FollowRequest {
   reward_coins    Int
   slots_remaining Int
   total_slots     Int          @default(0)
-  auto_approve_hours Int       @default(24)
+  auto_approve_hours Float       @default(24)
   type            String       @default("subscribe") // "subscribe", "like", "view"
+  verificationType String      @default("manual") // "manual", "auto"
   status          String       @default("active") // "active", "completed", "cancelled"
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -187,4 +192,19 @@ model SystemConfig {
   voiceNoteDate   DateTime?
   
   updatedAt       DateTime @updatedAt
+}
+
+
+model OtherApp {
+  id        Int      @id @default(autoincrement())
+  name      String
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model TutorialLink {
+  id        Int      @id @default(autoincrement())
+  title     String
+  url       String
+  createdAt DateTime @default(now())
 }

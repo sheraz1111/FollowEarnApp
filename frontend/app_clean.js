@@ -350,9 +350,7 @@ async function renderPage(page) {
             case 'personal-admin': app.innerHTML = await buildPersonalAdminPage(); break;
             case 'super-admin':  app.innerHTML = await buildSuperAdminPage(); break;
             case 'privacy':      app.innerHTML = buildInfoPage('Privacy Policy', privacyContent); break;
-            case 'terms':        app.innerHTML = buildInfoPage('Terms of Service', termsContent); break;
             case 'disclaimer':   app.innerHTML = buildInfoPage('Disclaimer', disclaimerContent); break;
-            case 'contact':      app.innerHTML = buildInfoPage('Contact Us', contactContent); break;
             case 'rateus':       app.innerHTML = buildRateUsPage(); break;
             default:             app.innerHTML = await buildHomePage();
         }
@@ -370,7 +368,7 @@ function toggleSidebar() {
     o.style.display = s.classList.contains('open') ? 'block' : 'none';
 }
 function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar').classList.remove('active');
     document.getElementById('sidebarOverlay').style.display = 'none';
 }
 
@@ -753,20 +751,6 @@ async function buildHomePage() {
     } else {
         html += '<div class="content-grid">';
         filtered.forEach(req => {
-            let actualLink = req.target_link;
-            let instructionsHtml = '';
-            if (actualLink && actualLink.includes('|||')) {
-                const parts = actualLink.split('|||');
-                actualLink = parts[0];
-                const instrText = parts[1];
-                instructionsHtml = `
-                    <div style="background:rgba(16, 185, 129, 0.05); border:1px dashed var(--green); padding:10px; margin:0 12px 10px; border-radius:8px; font-size:0.85rem; color:var(--text-main);">
-                        <strong style="color:var(--green); display:block; margin-bottom:4px;"><i class="fas fa-clipboard-list"></i> Task Instructions:</strong>
-                        ${instrText}
-                    </div>
-                `;
-            }
-
             const total = req.total_slots || req.slots_remaining; // fallback
             const done = total - req.slots_remaining;
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -780,10 +764,10 @@ async function buildHomePage() {
             }
             
             let ytThumbnail = '';
-            if (actualLink.includes('youtube.com') || actualLink.includes('youtu.be')) {
+            if (req.target_link.includes('youtube.com') || req.target_link.includes('youtu.be')) {
                 let videoId = '';
-                if (actualLink.includes('v=')) videoId = actualLink.split('v=')[1]?.split('&')[0];
-                else if (actualLink.includes('youtu.be/')) videoId = actualLink.split('youtu.be/')[1]?.split('?')[0];
+                if (req.target_link.includes('v=')) videoId = req.target_link.split('v=')[1]?.split('&')[0];
+                else if (req.target_link.includes('youtu.be/')) videoId = req.target_link.split('youtu.be/')[1]?.split('?')[0];
                 if (videoId) {
                     ytThumbnail = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;height:100px;object-fit:cover;border-radius:12px 12px 0 0;" alt="Video Thumbnail">`;
                 }
@@ -812,10 +796,7 @@ async function buildHomePage() {
                             <span class="reward-coins"><i class="fas fa-coins"></i> +${req.reward_coins} coins</span>
                             <span class="slots-left">${req.slots_remaining} left</span>
                         </div>
-                    </div>
-                    ${instructionsHtml}
-                    <div style="padding:0 12px 12px;">
-                        <button class="action-btn btn-subscribe" onclick="openTask(${req.id}, '${actualLink.replace(/'/g, '')}', '${req.type || 'subscribe'}')" style="margin-bottom:5px;">
+                        <button class="action-btn btn-subscribe" onclick="openTask(${req.id}, '${req.target_link.replace(/'/g, '')}', '${req.type || 'subscribe'}')" style="margin-bottom:5px;">
                             <i class="fas fa-play"></i> Start Task
                         </button>
                         <button onclick="reportCampaign(${req.id})" style="background:transparent; color:var(--gray); border:none; cursor:pointer; font-size:0.8rem; text-decoration:underline;">
@@ -868,12 +849,6 @@ window.reportCampaign = async function(taskId) {
 }
 
 window.openTask = async function(taskId, taskUrl, type) {
-    // GUEST MODE: require login before doing any task
-    if (!state.user) {
-        showToast('Please login or sign up to start earning! 🚀', 'info');
-        document.getElementById('userAuthModal').classList.add('active');
-        return;
-    }
     state.currentTaskId = taskId;
     state.currentTaskType = type;
     
@@ -1530,12 +1505,6 @@ async function buildStorePage() {
 // ===== ADVANCED FEATURES LOGIC =====
 
 window.claimDailyBonus = async function(btn) {
-    // GUEST MODE: require login
-    if (!state.user) {
-        showToast('Please login or sign up to claim your bonus! 🎁', 'info');
-        document.getElementById('userAuthModal').classList.add('active');
-        return;
-    }
     if (btn) btn.disabled = true;
     try {
         // Monetag Direct Link Ad
@@ -2480,10 +2449,6 @@ window.updateCampaignLabels = function() {
     if (!platformSelect || platformSelect.selectedIndex === -1) return;
     const platformName = platformSelect.options[platformSelect.selectedIndex].text.toLowerCase();
     const isSubscribe = state.campaignType === 'subscribe';
-    const isCustom = state.campaignType === 'custom' || platformName.includes('website') || platformName.includes('custom');
-    
-    const instrGroup = document.getElementById('campaignInstructionsGroup');
-    if (instrGroup) instrGroup.style.display = isCustom ? 'block' : 'none';
     
     const urlLabel = document.querySelector('label[for="campaignUrl"]') || document.getElementById('campaignUrlLabel') || document.querySelector('#campaignFormStep label:nth-of-type(2)');
     if (!urlLabel) return; // Fallback if ID is missing
@@ -2491,10 +2456,7 @@ window.updateCampaignLabels = function() {
     let labelText = 'Target Link *';
     let placeholderText = 'Enter valid URL';
 
-    if (isCustom) {
-        labelText = 'Website / App Link *';
-        placeholderText = 'e.g. https://yourwebsite.com';
-    } else if (platformName.includes('youtube')) {
+    if (platformName.includes('youtube')) {
         labelText = isSubscribe ? 'Channel Link *' : 'Video Link *';
         placeholderText = isSubscribe ? 'e.g. youtube.com/@channel' : 'e.g. youtube.com/watch?v=...';
     } else if (platformName.includes('tiktok')) {
@@ -2529,14 +2491,13 @@ window.updateCampaignLabels = function() {
     urlLabel.innerText = labelText;
     document.getElementById('campaignUrl').placeholder = placeholderText;
 };
-
 function selectCampaignType(type) {
     state.campaignType = type;
-    const coinsEach = type === 'subscribe' ? 10 : type === 'comment' ? 8 : type === 'view' ? 2 : type === 'custom' ? 15 : 5;
+    const coinsEach = type === 'subscribe' ? 10 : type === 'comment' ? 8 : type === 'view' ? 2 : 5;
     document.getElementById('campaignCoinsEach').innerText = coinsEach;
     document.getElementById('campaignFormTitle').innerHTML = type === 'subscribe'
         ? '<i class="fas fa-user-plus"></i> Subscribe Campaign'
-        : type === 'view' ? '<i class="fas fa-eye"></i> Views Campaign (Auto)' : type === 'comment' ? '<i class="fas fa-comment"></i> Comment Campaign' : type === 'custom' ? '<i class="fas fa-check-double"></i> Custom Task / App' : '<i class="fas fa-thumbs-up"></i> Like Campaign';
+        : type === 'view' ? '<i class="fas fa-eye"></i> Views Campaign (Auto)' : type === 'comment' ? '<i class="fas fa-comment"></i> Comment Campaign' : '<i class="fas fa-thumbs-up"></i> Like Campaign';
     document.getElementById('campaignUserBalance').innerText = `${state.user.coins} coins`;
     document.getElementById('campaignTotalCost').innerText = '0 coins';
     document.getElementById('campaignCount').value = '';
@@ -2544,7 +2505,6 @@ function selectCampaignType(type) {
     document.getElementById('campaignFormStep').classList.add('active');
     updateCampaignLabels();
 }
-
 window.fetchUrlMetadata = async function(url) {
     if (!url || url.length < 10) return;
     const previewDiv = document.getElementById('campaignMetadataPreview');
@@ -2578,10 +2538,9 @@ window.fetchUrlMetadata = async function(url) {
 
 function calcCampaignCost() {
     const count = parseInt(document.getElementById('campaignCount').value) || 0;
-    const coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : state.campaignType === 'custom' ? 15 : 5;
+    const coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : 5;
     document.getElementById('campaignTotalCost').innerText = `${count * coinsEach} coins`;
 }
-
 async function submitCampaignForm() {
     const platformSelect = document.getElementById('campaignPlatformSelect');
     if (!platformSelect || platformSelect.options.length === 0 || platformSelect.selectedIndex === -1) {
@@ -2593,12 +2552,7 @@ async function submitCampaignForm() {
     const name = document.getElementById('campaignName').value.trim();
     let url = document.getElementById('campaignUrl').value.trim();
     const count = parseInt(document.getElementById('campaignCount').value);
-    
-    const instrGroup = document.getElementById('campaignInstructionsGroup');
-    const instructions = instrGroup && instrGroup.style.display !== 'none' ? document.getElementById('campaignInstructions').value.trim() : '';
-
     if (!url || !count || count < 10) return showToast('Please provide URL and Min 10 quantity.', 'error');
-    if (instrGroup && instrGroup.style.display !== 'none' && !instructions) return showToast('Please provide Task Instructions.', 'error');
     
     url = url.trim();
     if (!/^https?:\/\//i.test(url)) {
@@ -2609,11 +2563,8 @@ async function submitCampaignForm() {
     const urlLower = url.toLowerCase();
     let isValidUrl = false;
     const isSubscribe = state.campaignType === 'subscribe';
-    const isCustom = state.campaignType === 'custom' || platformName.includes('custom') || platformName.includes('website');
     
-    if (isCustom) {
-        isValidUrl = true; // allow any for custom
-    } else if (platformName.includes('youtube')) {
+    if (platformName.includes('youtube')) {
         if (!urlLower.includes('youtube.com/') && !urlLower.includes('youtu.be/')) return showToast('Please enter a valid YouTube URL.', 'error');
         if (isSubscribe) {
             if (urlLower.includes('/watch') || urlLower.includes('youtu.be') || urlLower.includes('/shorts/')) return showToast('For Subscribe campaigns, please enter a Channel link, not a video link.', 'error');
@@ -2712,15 +2663,9 @@ async function submitCampaignForm() {
         isValidUrl = true;
     }
 
-    const coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : state.campaignType === 'custom' ? 15 : 5;
+    const coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : 5;
     const totalCost = count * coinsEach;
     if (state.user.coins < totalCost) return showToast(`Not enough coins! Need ${totalCost}, you have ${state.user.coins}`, 'error');
-    
-    // Append instructions to URL if any
-    let finalUrl = url;
-    if (instructions) {
-        finalUrl = finalUrl + '|||' + instructions;
-    }
 
     const btn = document.getElementById('campaignSubmitBtn');
     btn.disabled = true;
@@ -2731,7 +2676,7 @@ async function submitCampaignForm() {
         const autoApproveHours = autoApproveEl ? parseFloat(autoApproveEl.value) : 24;
         await api.requests.create({ 
             platformId, 
-            target_link: finalUrl, 
+            target_link: url, 
             reward_coins: coinsEach, 
             slots: count, 
             type: state.campaignType,
@@ -3031,21 +2976,6 @@ const privacyContent = `
 <h3>Contact</h3>
 <p>Email: viraloopteem@gmail.com</p>
 `;
-const termsContent = `
-<h2>Terms of Service</h2>
-<h3>1. Acceptance of Terms</h3>
-<p>By accessing and using ViralLoop, you accept and agree to be bound by the terms and provision of this agreement.</p>
-<h3>2. User Conduct</h3>
-<p>You agree to use the service for lawful purposes only and in a way that does not infringe the rights of, restrict or inhibit anyone else's use and enjoyment of the website.</p>
-<h3>3. Account Termination</h3>
-<p>We reserve the right to terminate or suspend access to our service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.</p>
-`;
-const contactContent = `
-<h2>Contact Us</h2>
-<p>If you have any questions, concerns, or need support regarding our services, please feel free to reach out to us.</p>
-<p><strong>Email Support:</strong> viraloopteem@gmail.com</p>
-<p>We aim to respond to all inquiries within 24-48 hours. For faster resolution, please include your User ID (UID) when emailing us regarding account issues.</p>
-`;
 const disclaimerContent = `
 <h2>Disclaimer</h2>
 <h3>Platform Risk</h3>
@@ -3125,20 +3055,10 @@ async function initApp() {
             showPage(savedPage);
         } catch (e) {
             localStorage.removeItem('token');
-            // GUEST MODE: Show home page instead of forcing login
-            loadMonetagAds();
-            document.getElementById('mainHeader').classList.remove('hidden');
-            if (document.getElementById('honestyBanner')) document.getElementById('honestyBanner').classList.remove('hidden');
-            document.getElementById('bottomNav').classList.remove('hidden');
-            showPage('home');
+            document.getElementById('userAuthModal').classList.add('active');
         }
     } else {
-        // GUEST MODE: No token - show home page with ads, login required only on action
-        loadMonetagAds();
-        document.getElementById('mainHeader').classList.remove('hidden');
-        if (document.getElementById('honestyBanner')) document.getElementById('honestyBanner').classList.remove('hidden');
-        document.getElementById('bottomNav').classList.remove('hidden');
-        showPage('home');
+        document.getElementById('userAuthModal').classList.add('active');
     }
 
     // Check for Global Popup and Voice Announcement
