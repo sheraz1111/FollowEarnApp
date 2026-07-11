@@ -3040,6 +3040,7 @@ function handlePaymentScreenshot(input) {
             document.getElementById('paymentPreviewImg').src = e.target.result;
             document.getElementById('paymentPreview').style.display = 'block';
             document.getElementById('paymentFileLabel').innerText = input.files[0].name;
+        };
         reader.readAsDataURL(input.files[0]);
     }
 }
