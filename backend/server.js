@@ -1962,12 +1962,14 @@ if (typeof require !== 'undefined' && require.main === module) {
 
 export default app;
 
+//
+
+//
+
 // ==========================================
 // LemonSqueezy Integration
 // ==========================================
 
-
-// Helper to interact with LemonSqueezy API
 async function lsApi(path, method = 'GET', body = null) {
     const key = process.env.LEMONSQUEEZY_API_KEY || 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NGQ1OWNlZi1kYmI4LTRlYTUtYjE3OC1kMjU0MGZjZDY5MTkiLCJqdGkiOiIwOGY4NGY5OTljZTVkZjgwNWYyYzI1M2IxZjE1MDJjY2YzOTU5MTkwNjgxN2E1ZGY2MzYxNzFmMmMxMDFjMjFjZDc2MTNhYTNjZmU4OTMyOCIsImlhdCI6MTc4MzczNTgwNi4yNjA5ODcsIm5iZiI6MTc4MzczNTgwNi4yNjA5OSwiZXhwIjoxNzk5NjI1NjAwLjAzOTAzOSwic3ViIjoiNzQ4MjY4OSIsInNjb3BlcyI6W119.oTqwJKTAaWr9Go6asPUQM97K1QRi8bTHKy_Cvdu9yHxHG6RdZ0nr0OrMemJEbuzx3sHN6u38dzhC1K3G2Z79NXAtpV86PlUwY5dsjZu1i4WcSlJpFQG_8jt3T795FmAplw3dYuC_Evn9Bxrj20QaWK-Ez0POks1BaKzd8odKsRhHsKCAv0IVs2AI9cDXSDa8RCs11AmhDLi9Jwp49ISzRfD9_owrPHOxIwIidO5dHMiCb-PESgctkU4JvB1e-1lFHcoetwv4N3z69Aq29_N2Fa_llMnNTsXFmoaSfOVQvkx8VuSRmFnuLMkWaf7SE3vDP2Ojn6ZIa8BoucVzWRtRBRqYeEU0UTPbawIAdWdVy7tJggOgyJH81sFcqeY_gaEAJOazFlq2_P_QXvfoL77D3uHq77M0c487uENh88oy43PuMmmiWWO7VPo6t8oRZTo2TQ6QUkMkEUQ9F1x81XH_J9et5uWGLdZlaJq_w4uDUhYB9LV-1f37XLKCI_mvXxgiKsY4UVpKIo7rxhBcbMsFFnpy3DXhLTh0Fqe0NZrxTfd16lVvQfTH6sPq1bjfIVcniNuyE1G4OmRnuOnIjyzb0PAiNHOzFR9ASBYudJ7BD5B1CqeUf-ffI6JEG7wum039hbbf0eOr_o1tJpE8F0wEm-YCGIgrqlemp6cRdcT1Zr0';
     
@@ -1991,11 +1993,28 @@ async function lsApi(path, method = 'GET', body = null) {
 
 app.post('/api/wallet/buy-coins', authenticate, async (req, res) => {
     try {
-        const { coins, priceUsd } = req.body;
+        const { coins, priceUsd, directOrder } = req.body;
         const user = await prisma.user.findUnique({ where: { id: req.userId } });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         const storeId = process.env.LEMONSQUEEZY_STORE_ID || '419815';
+
+        const customData = {
+            user_id: user.id.toString(),
+            coins: (coins || 0).toString()
+        };
+
+        let productName = `${(coins||0).toLocaleString()} Coins - FollowEarn`;
+        let productDesc = `Purchase ${(coins||0).toLocaleString()} coins for your FollowEarn campaigns.`;
+        
+        if (directOrder) {
+            customData.direct_platform = directOrder.platform;
+            customData.direct_pkg = directOrder.pkgName;
+            customData.direct_url = directOrder.targetUrl;
+            customData.direct_price = priceUsd.toString();
+            productName = `Direct Order - ${directOrder.pkgName} (${directOrder.platform})`;
+            productDesc = `Purchase ${directOrder.pkgName} for ${directOrder.targetUrl}`;
+        }
 
         const payload = {
             data: {
@@ -2003,11 +2022,11 @@ app.post('/api/wallet/buy-coins', authenticate, async (req, res) => {
                 attributes: {
                     custom_price: Math.round(priceUsd * 100),
                     product_options: {
-                        name: `${coins.toLocaleString()} Coins - FollowEarn`,
-                        description: `Purchase ${coins.toLocaleString()} coins for your FollowEarn campaigns.`,
+                        name: productName,
+                        description: productDesc,
                         receipt_button_text: 'Return to App',
                         receipt_link_url: 'https://viraloop.website',
-                        receipt_thank_you_note: 'Thank you for purchasing coins! They have been added to your account.'
+                        receipt_thank_you_note: 'Thank you for your purchase!'
                     },
                     checkout_options: {
                         embed: false,
@@ -2017,10 +2036,7 @@ app.post('/api/wallet/buy-coins', authenticate, async (req, res) => {
                     checkout_data: {
                         email: user.email || '',
                         name: user.name || '',
-                        custom: {
-                            user_id: user.id.toString(),
-                            coins: coins.toString()
-                        }
+                        custom: customData
                     }
                 },
                 relationships: {
@@ -2042,7 +2058,7 @@ app.post('/api/wallet/buy-coins', authenticate, async (req, res) => {
 
         const storeProducts = await lsApi(`/products?filter[store_id]=${storeId}`);
         if (!storeProducts.data || storeProducts.data.length === 0) {
-            return res.status(400).json({ error: 'No products found in your LemonSqueezy store. Please create at least one dummy product.' });
+            return res.status(400).json({ error: 'No products found in your LemonSqueezy store.' });
         }
         
         const productId = storeProducts.data[0].id;
@@ -2081,16 +2097,44 @@ app.post('/api/lemonsqueezy/webhook', async (req, res) => {
 
         if (payload.meta.event_name === 'order_created') {
             const customData = payload.meta.custom_data;
-            if (customData && customData.user_id && customData.coins) {
+            if (customData && customData.user_id) {
                 const userId = parseInt(customData.user_id);
-                const coinsToAdd = parseInt(customData.coins);
-
-                await prisma.user.update({
-                    where: { id: userId },
-                    data: { coins_balance: { increment: coinsToAdd } }
-                });
                 
-                console.log(`Webhook: Added ${coinsToAdd} coins to user ${userId}`);
+                if (customData.direct_platform) {
+                    await prisma.directOrder.create({
+                        data: {
+                            userId: userId,
+                            platform: customData.direct_platform,
+                            package: customData.direct_pkg,
+                            price: parseFloat(customData.direct_price),
+                            method: 'lemonsqueezy',
+                            txId: payload.data.id,
+                            proofImg: null,
+                            targetUrl: customData.direct_url,
+                            status: 'pending'
+                        }
+                    });
+                    
+                    const admins = await prisma.user.findMany({ where: { role: 'admin' } });
+                    if (admins.length > 0) {
+                        await prisma.notification.createMany({
+                            data: admins.map(a => ({
+                                userId: a.id,
+                                message: `New automatic direct order placed for ${customData.direct_pkg}!`
+                            }))
+                        });
+                    }
+                    console.log(`Webhook: Created direct order for user ${userId}`);
+                } else if (customData.coins) {
+                    const coinsToAdd = parseInt(customData.coins);
+                    if (coinsToAdd > 0) {
+                        await prisma.user.update({
+                            where: { id: userId },
+                            data: { coins_balance: { increment: coinsToAdd } }
+                        });
+                        console.log(`Webhook: Added ${coinsToAdd} coins to user ${userId}`);
+                    }
+                }
             }
         }
 

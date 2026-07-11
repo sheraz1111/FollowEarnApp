@@ -618,35 +618,9 @@
             <div class="payment-form" id="paymentFormSection">
                 <h3 style="color:var(--gold);margin-bottom:15px"><i class="fas fa-money-bill"></i> Payment Details</h3>
                 <div class="qr-display" id="paymentDetails"></div>
-                <div class="payment-instructions">
-                    <div style="color:var(--primary);font-weight:bold;margin-bottom:10px"><i class="fas fa-info-circle"></i> Important:</div>
-                    <ul>
-                        <li>Send exact amount shown above</li>
-                        <li>Save Transaction ID / Screenshot</li>
-                        <li>Upload payment proof below</li>
-                        <li>Wait for admin verification (24hr)</li>
-                    </ul>
-                </div>
                 <div class="form-group" id="directOrderUrlGroup" style="display:none;">
                     <label style="display:block;margin-bottom:8px;color:var(--gold)">Target URL (Channel/Page Link) *</label>
                     <input class="form-input" id="directTargetUrl" placeholder="Enter link for followers/subscribers" type="url">
-                </div>
-                <div id="paymentProofSection">
-                    <div class="form-group">
-                        <label style="display:block;margin-bottom:8px;color:var(--gold)">Transaction ID (TID / TxID) *</label>
-                        <input class="form-input" id="paymentTxId" placeholder="Enter the 11-digit TID or Binance TxID" type="text">
-                    </div>
-                    <div class="form-group">
-                        <label style="display:block;margin-bottom:8px;color:var(--gold)">Upload Payment Screenshot *</label>
-                        <div class="upload-area" onclick="document.getElementById('paymentScreenshot').click()" style="padding:20px">
-                            <i class="fas fa-camera" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
-                            <p id="paymentFileLabel">Click to upload screenshot</p>
-                        </div>
-                        <input accept="image/jpeg,image/png,image/jpg" id="paymentScreenshot" onchange="handlePaymentScreenshot(this)" style="display:none" type="file">
-                        <div id="paymentPreview" style="display:none;margin-top:10px;text-align:center;">
-                            <img id="paymentPreviewImg" style="max-width:100%;max-height:150px;border-radius:10px;border:2px solid var(--gold)">
-                        </div>
-                    </div>
                 </div>
                 <button onclick="submitPayment()" id="paymentSubmitBtn" class="action-btn btn-payment" style="margin-top:10px;">
                     <i class="fas fa-check"></i> I Have Paid - Submit for Verification

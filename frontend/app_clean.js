@@ -2820,7 +2820,7 @@ function selectPaymentMethod(method) {
 
     document.querySelectorAll('.payment-method').forEach(el => el.style.borderColor = 'var(--border-main)');
     if (method === 'jazzcash') event.currentTarget.style.borderColor = 'var(--primary)';
-    else if (method === 'creem') event.currentTarget.style.borderColor = '#7C3AED';
+    else if (method === 'lemonsqueezy') event.currentTarget.style.borderColor = '#7C3AED';
     else event.currentTarget.style.borderColor = 'var(--gold)';
 
     document.getElementById('paymentFormSection').classList.add('active');
@@ -2828,13 +2828,13 @@ function selectPaymentMethod(method) {
     // Hide proof inputs for Creem
     const proofSection = document.getElementById('paymentProofSection');
     if (proofSection) {
-        proofSection.style.display = method === 'creem' ? 'none' : 'block';
+        proofSection.style.display = method === 'lemonsqueezy' ? 'none' : 'block';
     }
     
     // Change button text
     const submitBtn = document.getElementById('paymentSubmitBtn');
     if (submitBtn) {
-        submitBtn.innerHTML = method === 'creem' ? '<i class="fas fa-lock"></i> Pay Securely' : 'Submit Payment Proof';
+        submitBtn.innerHTML = method === 'lemonsqueezy' ? '<i class="fas fa-lock"></i> Pay Securely' : 'Submit Payment Proof';
     }
 }
 function handlePaymentScreenshot(input) {
@@ -2850,19 +2850,32 @@ function handlePaymentScreenshot(input) {
 }
 async function submitPayment() {
     const method = state.selectedPaymentMethod;
-    
-    // Auto-checkout for LemonSqueezy
+    const targetUrlEl = document.getElementById('directTargetUrl');
+    const targetUrl = targetUrlEl ? targetUrlEl.value.trim() : '';
+
+    if (state.directOrder && !targetUrl) return showToast('Please enter the Target URL', 'error');
+    if (!state.selectedPackage) return showToast('Please select a package', 'error');
+
     if (method === 'lemonsqueezy') {
         const btn = document.getElementById('paymentSubmitBtn');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
         btn.disabled = true;
         try {
+            const payload = {
+                coins: state.selectedPackage.coins, 
+                priceUsd: state.selectedPackage.price 
+            };
+            if (state.directOrder) {
+                payload.directOrder = {
+                    platform: state.directOrder.platform,
+                    pkgName: state.directOrder.pkgName,
+                    targetUrl: targetUrl
+                };
+            }
+
             const res = await api.request('/wallet/buy-coins', { 
                 method: 'POST',
-                body: JSON.stringify({ 
-                    coins: state.selectedPackage.coins, 
-                    priceUsd: state.selectedPackage.price 
-                })
+                body: JSON.stringify(payload)
             });
             if (res.checkoutUrl) {
                 window.location.href = res.checkoutUrl;
@@ -2875,75 +2888,8 @@ async function submitPayment() {
             btn.disabled = false;
             return showToast(e.message || 'Failed to start checkout process.', 'error');
         }
-    }
-
-    const txId = document.getElementById('paymentTxId').value.trim();
-    const screenshot = document.getElementById('paymentScreenshot').files[0];
-    const targetUrl = document.getElementById('directTargetUrl').value.trim();
-
-    if (state.directOrder && !targetUrl) return showToast('Please enter the Target URL', 'error');
-    if (!txId) return showToast('Please enter the Transaction ID (TID / TxID)', 'error');
-    
-    // TXID Validation
-    if (method === 'jazzcash') {
-        if (!/^\d{11,12}$/.test(txId)) {
-            return showToast('Invalid TID! EasyPaisa/JazzCash TID must be exactly 11 or 12 numbers (no English letters).', 'error');
-        }
-    } else if (method === 'binance') {
-        if (txId.length < 8) {
-            return showToast('Invalid Binance TxID or Pay ID!', 'error');
-        }
-    }
-
-    if (!screenshot) return showToast('Please upload payment screenshot', 'error');
-    if (!state.selectedPackage) return showToast('Please select a package', 'error');
-
-    const btn = document.getElementById('paymentSubmitBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<div class="loading-spinner"></div> Submitting...';
-
-    try {
-        const fd = new FormData();
-        fd.append('screenshot', screenshot);
-        
-        // 1. First upload the screenshot
-        const uploadRes = await api.request('/upload', { method: 'POST', body: fd });
-        if (uploadRes.error) throw new Error(uploadRes.error);
-        const proofImg = uploadRes.fileUrl;
-
-        // 2. Submit the order (either Direct Order or Deposit)
-        let res;
-        if (state.directOrder) {
-            const orderData = {
-                platform: state.directOrder.platform,
-                pkgName: state.directOrder.pkgName,
-                price: state.selectedPackage.price,
-                method: state.selectedPaymentMethod,
-                txId: txId,
-                proofImg: proofImg,
-                targetUrl: targetUrl
-            };
-            res = await api.store.directOrder(orderData);
-        } else {
-            const depositData = {
-                amount: state.selectedPackage.coins,
-                price: state.selectedPackage.price,
-                method: state.selectedPaymentMethod,
-                txId: txId,
-                proofImg: proofImg
-            };
-            res = await api.store.deposit(depositData);
-        }
-        
-        if (res.error) throw new Error(res.error);
-
-        closePaymentModal();
-        showToast('Payment submitted! Admin will verify in 24hrs. ✅', 'success');
-    } catch(e) {
-        showToast(e.message || 'Payment submission failed', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-check"></i> I Have Paid - Submit for Verification';
+    } else {
+        showToast('This payment method is no longer available.', 'error');
     }
 }
 
