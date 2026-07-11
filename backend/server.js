@@ -1997,6 +1997,11 @@ app.post('/api/wallet/buy-coins', authenticate, async (req, res) => {
         const user = await prisma.user.findUnique({ where: { id: req.user.id } });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
+        const pkrPrice = Math.round(priceUsd * 278);
+        if (pkrPrice < 150) {
+            return res.status(400).json({ error: 'Minimum transaction amount is Rs 150 (approx $0.50) due to payment gateway limits. Please select a larger package.' });
+        }
+
         const storeId = process.env.LEMONSQUEEZY_STORE_ID || '419815';
 
         const customData = {
@@ -2020,7 +2025,7 @@ app.post('/api/wallet/buy-coins', authenticate, async (req, res) => {
             data: {
                 type: 'checkouts',
                 attributes: {
-                    custom_price: Math.round(priceUsd * 100),
+                    custom_price: Math.round(priceUsd * 278 * 100),
                     product_options: {
                         name: productName,
                         description: productDesc,
