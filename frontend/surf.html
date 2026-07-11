@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surfing Task - ViralLoop</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; overflow: hidden; }
+        
+        #top-bar {
+            height: 60px;
+            background: #1e293b;
+            border-bottom: 2px solid #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 100;
+            position: relative;
+        }
+
+        .logo { font-weight: bold; font-size: 1.2rem; color: #fff; }
+        .logo span { color: #f59e0b; }
+
+        #timer-container {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: rgba(59, 130, 246, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #timer-text { color: #fff; }
+        .spinner {
+            width: 20px; height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #iframe-container {
+            height: calc(100vh - 60px);
+            width: 100%;
+            background: #000;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .btn {
+            background: #3b82f6; color: white; border: none;
+            padding: 8px 15px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; text-decoration: none;
+        }
+        .btn:hover { background: #2563eb; }
+
+        #success-overlay {
+            position: absolute; top: 60px; left: 0; width: 100%; height: calc(100vh - 60px);
+            background: #0f172a; display: none; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; z-index: 200;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div class="logo">Viral<span>Loop</span></div>
+        <div id="timer-container">
+            <div class="spinner" id="spinner"></div>
+            <span id="timer-text">Please wait...</span>
+        </div>
+        <button class="btn" onclick="window.location.href='/'">Cancel</button>
+    </div>
+
+    <div id="iframe-container">
+        <iframe id="target-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    </div>
+
+    <div id="success-overlay">
+        <i id="status-icon" class="fas fa-check-circle" style="font-size: 5rem; color: #10b981; margin-bottom: 20px;"></i>
+        <h2 id="status-title" style="margin-bottom: 10px;">Task Completed!</h2>
+        <p id="reward-text" style="color: #cbd5e1; margin-bottom: 25px; font-size: 1.1rem;">Coins have been added to your wallet.</p>
+        <button class="btn" onclick="window.location.href='/'" style="font-size: 1.1rem; padding: 12px 25px;"><i class="fas fa-arrow-left"></i> Go Back to Dashboard</button>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api' : '/api';
+            
+        const urlParams = new URLSearchParams(window.location.search);
+        const taskId = urlParams.get('taskId');
+        const targetUrl = urlParams.get('url');
+        let timerSeconds = parseInt(urlParams.get('timer')) || 15;
+
+        if (!taskId || !targetUrl) {
+            document.getElementById('timer-text').innerText = "Invalid Task!";
+            document.getElementById('spinner').style.display = 'none';
+        } else {
+            // Load iframe
+            document.getElementById('target-frame').src = targetUrl;
+
+            // Start countdown
+            const timerEl = document.getElementById('timer-text');
+            timerEl.innerText = `Wait ${timerSeconds} seconds...`;
+
+            const interval = setInterval(() => {
+                timerSeconds--;
+                if (timerSeconds > 0) {
+                    timerEl.innerText = `Wait ${timerSeconds} seconds...`;
+                } else {
+                    clearInterval(interval);
+                    timerEl.innerText = "Verifying...";
+                    verifyTask();
+                }
+            }, 1000);
+        }
+
+        async function verifyTask() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert("Session expired. Please login again.");
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/submissions/auto-verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ requestId: taskId })
+                });
+
+                const data = await res.json();
+                
+                document.getElementById('timer-container').style.background = 'rgba(16, 185, 129, 0.2)';
+                document.getElementById('timer-container').style.borderColor = '#10b981';
+                document.getElementById('spinner').style.display = 'none';
+
+                if (data.success) {
+                    document.getElementById('status-title').innerText = `Task Completed!`;
+                    document.getElementById('status-icon').className = 'fas fa-check-circle';
+                    document.getElementById('status-icon').style.color = '#10b981';
+                    document.getElementById('timer-text').innerText = `Success!`;
+                    document.getElementById('reward-text').innerText = `You earned ${data.coins} coins! ${data.isVip ? '(VIP Bonus included)' : ''}`;
+                    document.getElementById('success-overlay').style.display = 'flex';
+                } else {
+                    document.getElementById('status-title').innerText = `Task Failed!`;
+                    document.getElementById('status-title').style.color = '#ef4444';
+                    document.getElementById('status-icon').className = 'fas fa-times-circle';
+                    document.getElementById('status-icon').style.color = '#ef4444';
+                    document.getElementById('timer-text').innerText = "Failed";
+                    document.getElementById('reward-text').innerText = data.error || "Verification failed. You might have already done this task.";
+                    document.getElementById('reward-text').style.color = '#ef4444';
+                    document.getElementById('success-overlay').style.display = 'flex';
+                }
+            } catch (e) {
+                alert("Network error. Please try again.");
+                window.location.href = '/';
+            }
+        }
+    </script>
+</body>
+</html>

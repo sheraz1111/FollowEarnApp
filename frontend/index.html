@@ -177,6 +177,9 @@
             <div class="stat coins" onclick="showPage('earn')" id="coinsBadge" style="flex-shrink:0;">
                 <i class="fas fa-coins" style="margin-right:4px"></i><span id="nav-coins-amount">0</span>
             </div>
+            <div class="stat" onclick="openWalletModal()" id="gemsBadge" style="flex-shrink:0; background:linear-gradient(45deg, #10b981, #34d399); color:#fff; cursor:pointer; font-weight:bold;">
+                <i class="fas fa-gem" style="margin-right:4px"></i><span id="nav-gems-amount">0</span>
+            </div>
             <div class="admin-trigger" id="adminTriggerDot" style="display:none;" onclick="adminTrigger()" title="Admin Panel"></div>
         </div>
     </header>
@@ -199,7 +202,10 @@
             <i class="fas fa-globe"></i> All
         </div>
         <div class="platform-btn" id="pb-custom" onclick="filterPlatform('custom', this)" style="background:var(--primary);color:#fff;border-color:var(--primary);">
-            <i class="fas fa-desktop"></i> Website / App
+            <i class="fas fa-desktop"></i> App / Custom
+        </div>
+        <div class="platform-btn" id="pb-website" onclick="filterPlatform('website', this)" style="background:#0984e3;color:#fff;border-color:#0984e3;">
+            <i class="fas fa-globe"></i> Website Surfing
         </div>
         <div class="platform-btn" id="pb-youtube" onclick="filterPlatform('youtube', this)" style="background:#ff0000;color:#fff;border-color:#ff0000;">
             <i class="fab fa-youtube"></i> YouTube
@@ -377,27 +383,46 @@
                     <p style="color:var(--gray);margin-top:5px">8 coins per comment</p>
                 </div>
                 <div class="campaign-type" onclick="selectCampaignType('custom')">
-                    <h3 style="color:#10b981"><i class="fas fa-check-double"></i> Custom Task / App</h3>
-                    <p style="color:var(--gray);margin-top:5px">10 coins per task</p>
+                    <h3 style="color:#10b981"><i class="fas fa-check-double"></i> App / Custom Task</h3>
+                    <p style="color:var(--gray);margin-top:5px">Custom coins per task</p>
+                </div>
+                <div class="campaign-type" onclick="selectCampaignType('website')">
+                    <h3 style="color:#0984e3"><i class="fas fa-mouse-pointer"></i> Website Surfing</h3>
+                    <p style="color:var(--gray);margin-top:5px">Auto-verify with timer</p>
                 </div>
             </div>
 
             <div class="form-step" id="campaignFormStep">
                 <div onclick="backToCampaignStep1()" style="cursor:pointer;margin-bottom:15px;color:var(--gray);display:flex;align-items:center;gap:5px;"><i class="fas fa-arrow-left"></i> Back</div>
                 <h3 id="campaignFormTitle" style="color:var(--primary);margin-bottom:20px"></h3>
-                <div class="form-group">
+                <div class="form-group" id="campaignPlatformGroup">
                     <label style="color:var(--gold);display:block;margin-bottom:6px">Platform *</label>
                     <select id="campaignPlatformSelect" class="form-input" onchange="updateCampaignLabels()">
                         <option value="">Loading platforms...</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label style="color:var(--gold);display:block;margin-bottom:6px">Channel / Profile Name (Optional)</label>
+                    <label id="campaignNameLabel" style="color:var(--gold);display:block;margin-bottom:6px">Channel / Profile Name (Optional)</label>
                     <input class="form-input" id="campaignName" placeholder="Enter name or leave blank" type="text" maxlength="50">
                 </div>
                 <div class="form-group">
                     <label id="campaignUrlLabel" style="color:var(--gold);display:block;margin-bottom:6px">Target URL *</label>
                     <input class="form-input" id="campaignUrl" placeholder="https://..." type="url" onblur="fetchUrlMetadata(this.value)">
+                </div>
+                <div class="form-group" id="campaignTimerGroup" style="display:none;">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px"><i class="fas fa-stopwatch"></i> Timer Duration *</label>
+                    <select class="form-input" id="campaignTimer" onchange="calcCampaignCost()">
+                        <option value="15">15 Seconds (10 Coins/view)</option>
+                        <option value="30">30 Seconds (15 Coins/view)</option>
+                        <option value="60">1 Minute (25 Coins/view)</option>
+                        <option value="300">5 Minutes (70 Coins/view)</option>
+                        <option value="600">10 Minutes (120 Coins/view)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="campaignCustomCoinsGroup" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; border:1px solid #10b981;">
+                    <label style="color:#10b981;display:block;margin-bottom:6px"><i class="fas fa-coins"></i> Reward per Task (Coins) *</label>
+                    <input class="form-input" id="campaignCustomCoins" type="number" min="15" value="15" oninput="calcCampaignCost()">
+                    <div style="font-size:0.75rem; color:var(--gold); margin-top:8px; line-height:1.4;"><i class="fas fa-star"></i> Pro Tip: Offering more coins will rank your campaign higher on the first page!</div>
                 </div>
                 <div class="form-group" id="campaignInstructionsGroup" style="display:none; background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; border:1px dashed var(--gold);">
                     <label style="color:var(--gold);display:block;margin-bottom:6px"><i class="fas fa-clipboard-list"></i> Task Instructions *</label>
@@ -413,7 +438,7 @@
                     <input class="form-input" id="campaignCount" min="10" max="10000" placeholder="10" type="number" oninput="calcCampaignCost()">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="campaignAutoApproveGroup">
                     <label style="color:var(--gold);display:block;margin-bottom:6px">
                         Auto-Approve Time <i class="fas fa-info-circle"></i>
                         <div style="font-size:0.75rem; color:var(--gray); margin-top:2px;">
@@ -581,25 +606,7 @@
                         <i class="fas fa-credit-card" style="font-size:2rem;color:#7C3AED"></i>
                         <div>
                             <div style="font-weight:bold">Credit/Debit Card (Auto)</div>
-                            <div style="font-size:0.85rem;color:var(--gray)">Instant Automated Credit via Creem</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="payment-method" onclick="selectPaymentMethod('jazzcash')">
-                    <div style="display:flex;align-items:center;gap:15px">
-                        <i class="fas fa-mobile-alt" style="font-size:2rem;color:var(--primary)"></i>
-                        <div>
-                            <div style="font-weight:bold">EasyPaisa / JazzCash</div>
-                            <div style="font-size:0.85rem;color:var(--gray)">Direct Mobile Transfer (Pakistan)</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="payment-method" onclick="selectPaymentMethod('binance')">
-                    <div style="display:flex;align-items:center;gap:15px">
-                        <i class="fab fa-bitcoin" style="font-size:2rem;color:var(--gold)"></i>
-                        <div>
-                            <div style="font-weight:bold">Binance / Crypto (USDT)</div>
-                            <div style="font-size:0.85rem;color:var(--gray)">International Transfer (0% Fee)</div>
+                            <div style="font-size:0.85rem;color:var(--gray)">Instant Automated Credit via LemonSqueezy (Coming Soon)</div>
                         </div>
                     </div>
                 </div>
@@ -645,7 +652,6 @@
         </div>
     </div>
 
-    <!-- Image Viewer Modal -->
     <div class="image-modal" id="imageModal" onclick="closeImageModal()">
         <img id="imageModalImg" src="" alt="Screenshot">
         <div class="image-modal-info" id="imageModalInfo" onclick="event.stopPropagation()">
@@ -653,8 +659,87 @@
         </div>
     </div>
 
-    <script src="api.js?v=13"></script>
-    <script src="app.js?v=18"></script>
+    <!-- Wallet Modal -->
+    <div class="campaign-modal" id="walletModal">
+        <div class="campaign-header">
+            <h2 style="color:#10b981"><i class="fas fa-wallet"></i> My Wallet</h2>
+            <button onclick="closeWalletModal()" style="background:#333;color:#fff;padding:8px 15px;border:none;border-radius:8px;cursor:pointer"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="campaign-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16,185,129,0.1); padding:20px; border-radius:10px; border:1px solid #10b981; margin-bottom:20px;">
+                <div>
+                    <h3 style="color:var(--gray); margin:0;">Total Gems</h3>
+                    <div style="font-size:2rem; font-weight:bold; color:#10b981; margin-top:5px;" id="walletGemsAmount">0</div>
+                </div>
+                <i class="fas fa-gem" style="font-size:3rem; color:#10b981; opacity:0.8;"></i>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button onclick="showWalletTab('convert')" id="walletTabConvert" style="flex:1; padding:10px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Convert to Coins</button>
+                <button onclick="showWalletTab('withdraw')" id="walletTabWithdraw" style="flex:1; padding:10px; background:#333; color:var(--gray); border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Withdraw ($)</button>
+            </div>
+            
+            <div id="walletConvertSection">
+                <h3 style="margin-bottom:10px;"><i class="fas fa-exchange-alt"></i> Convert Gems</h3>
+                <p style="color:var(--gray); font-size:0.9rem; margin-bottom:15px;">Exchange your Gems for Coins to run campaigns.</p>
+                <div style="background:var(--card-solid); padding:15px; border-radius:10px; text-align:center; margin-bottom:20px;">
+                    <span style="font-size:1.2rem; color:#10b981; font-weight:bold;">1 Gem</span>
+                    <i class="fas fa-arrow-right" style="margin:0 15px; color:var(--gray);"></i>
+                    <span style="font-size:1.2rem; color:var(--gold); font-weight:bold;">5 Coins</span>
+                </div>
+                <div class="form-group">
+                    <label style="color:#10b981;display:block;margin-bottom:6px">Amount to Convert</label>
+                    <input type="number" id="convertGemsInput" class="form-input" placeholder="Enter Gems" oninput="updateConvertPreview()">
+                </div>
+                <div style="text-align:center; color:var(--gold); margin-bottom:15px; font-weight:bold;">
+                    You will receive: <span id="convertCoinsPreview">0</span> Coins
+                </div>
+                <button onclick="submitGemsConversion()" style="width:100%;padding:15px;background:linear-gradient(45deg, #10b981, #34d399);color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">
+                    Convert Now
+                </button>
+            </div>
+            
+            <div id="walletWithdrawSection" style="display:none;">
+                <h3 style="margin-bottom:10px;"><i class="fas fa-hand-holding-usd"></i> Withdraw Money</h3>
+                <p style="color:var(--gray); font-size:0.9rem; margin-bottom:15px;">Withdraw your earnings to Binance (USDT).</p>
+                <div style="background:var(--card-solid); padding:15px; border-radius:10px; text-align:center; margin-bottom:20px; border: 1px dashed var(--gold);">
+                    <div style="font-size:1.5rem; color:var(--gold); font-weight:bold; margin-bottom:5px;">Target: 5,000 Gems</div>
+                    <div style="color:var(--green); font-weight:bold; font-size:1.2rem;">= $5.00</div>
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">Withdrawal Method</label>
+                    <select id="withdrawMethodSelect" class="form-input">
+                        <option value="binance">Binance Pay ID</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="color:var(--gold);display:block;margin-bottom:6px">Your Binance Pay ID / Details</label>
+                    <input type="text" id="withdrawDetailsInput" class="form-input" placeholder="Enter your Pay ID">
+                </div>
+                <button id="withdrawBtn" onclick="submitWithdrawal()" style="width:100%;padding:15px;background:var(--gold);color:#000;border:none;border-radius:10px;font-weight:bold;cursor:pointer; opacity:0.5; pointer-events:none;">
+                    Request Withdrawal (Need 5,000 Gems)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Instructions Modal -->
+    <div class="campaign-modal" id="instructionsModal" style="z-index: 20000; align-items: center; justify-content: center;">
+        <div class="campaign-content" style="max-width: 500px; width: 90%; background: var(--card-solid); border: 2px solid var(--green); margin: auto; max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: var(--green); margin: 0;"><i class="fas fa-clipboard-list"></i> Task Instructions</h3>
+                <i class="fas fa-times" onclick="closeInstructionsModal()" style="cursor: pointer; color: var(--gray); font-size: 1.2rem;"></i>
+            </div>
+            <div id="instructionsModalText" style="flex: 1; overflow-y: auto; color: var(--text-main); font-size: 1.1rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word;">
+            </div>
+            <button onclick="closeInstructionsModal()" style="width: 100%; padding: 12px; background: var(--green); color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px;">
+                I Understand
+            </button>
+        </div>
+    </div>
+
+    <script src="api.js?v=14"></script>
+    <script src="app.js?v=20"></script>
     
     <!-- iOS Install Prompt -->
     <div id="ios-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 10000; color: white; text-align: center; font-family: 'Inter', sans-serif;">

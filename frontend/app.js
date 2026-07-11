@@ -285,6 +285,7 @@ function initUserUI() {
 
     // Set user info
     document.getElementById('nav-coins-amount').innerText = state.user.coins;
+    if (document.getElementById('nav-gems-amount')) document.getElementById('nav-gems-amount').innerText = state.user.gems || 0;
     document.getElementById('headerUsername').innerText = state.user.name.split(' ')[0];
 
     const uid = state.user.uid || generateUID(state.user.name);
@@ -305,6 +306,11 @@ function initUserUI() {
 function updateCoinDisplay(coins) {
     if (state.user) state.user.coins = coins;
     document.getElementById('nav-coins-amount').innerText = coins;
+}
+
+function updateGemsDisplay(gems) {
+    if (state.user) state.user.gems = gems;
+    if (document.getElementById('nav-gems-amount')) document.getElementById('nav-gems-amount').innerText = gems;
 }
 
 function showPage(page) {
@@ -680,8 +686,20 @@ async function buildHomePage() {
 
     let filtered = requests;
     if (state.currentPlatformFilter !== 'all') {
-        filtered = requests.filter(r => r.platform.name.toLowerCase().includes(state.currentPlatformFilter));
+        if (state.currentPlatformFilter === 'website') {
+            filtered = requests.filter(r => r.type === 'website');
+        } else if (state.currentPlatformFilter === 'app' || state.currentPlatformFilter === 'custom') {
+            filtered = requests.filter(r => r.type === 'custom');
+        } else {
+            filtered = requests.filter(r => r.platform.name.toLowerCase().includes(state.currentPlatformFilter));
+        }
     }
+
+    // Hide custom/app campaigns from the general "All" view to prevent clutter
+    if (state.currentPlatformFilter === 'all' && (!state.currentTypeFilter || state.currentTypeFilter === 'all')) {
+        filtered = filtered.filter(r => r.type !== 'custom');
+    }
+
     if (state.currentTypeFilter && state.currentTypeFilter !== 'all') {
         filtered = filtered.filter(r => (r.type || 'subscribe') === state.currentTypeFilter);
     }
@@ -702,11 +720,19 @@ async function buildHomePage() {
 
         filtered = filtered.filter(r => (now - new Date(r.createdAt).getTime()) <= msThreshold);
     }
+    
+    if (state.sortFilter === 'high_reward') {
+        filtered.sort((a, b) => b.reward_coins - a.reward_coins);
+    }
 
     let html = `<div class="animate-fade">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 10px; flex-wrap:wrap; gap:10px;">
             <h3 style="margin:0;color:var(--text-main);">Available Campaigns</h3>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <select onchange="setSortFilter(this.value)" style="padding:4px; border-radius:5px; background:var(--card-solid); color:var(--text-main); border:1px solid var(--border-main); outline:none; font-size:0.85rem;">
+                    <option value="latest" ${!state.sortFilter || state.sortFilter === 'latest' ? 'selected' : ''}>Latest First</option>
+                    <option value="high_reward" ${state.sortFilter === 'high_reward' ? 'selected' : ''}>Highest Paying</option>
+                </select>
                 <select onchange="setTimeFilter(this.value)" style="padding:4px; border-radius:5px; background:var(--card-solid); color:var(--text-main); border:1px solid var(--border-main); outline:none; font-size:0.85rem;">
                     <option value="all" ${!state.timeFilter || state.timeFilter === 'all' ? 'selected' : ''}>Latest (All)</option>
                     <option value="1d" ${state.timeFilter === '1d' ? 'selected' : ''}>Last 1 Day</option>
@@ -760,9 +786,9 @@ async function buildHomePage() {
                 actualLink = parts[0];
                 const instrText = parts[1];
                 instructionsHtml = `
-                    <div style="background:rgba(16, 185, 129, 0.05); border:1px dashed var(--green); padding:10px; margin:0 12px 10px; border-radius:8px; font-size:0.85rem; color:var(--text-main);">
-                        <strong style="color:var(--green); display:block; margin-bottom:4px;"><i class="fas fa-clipboard-list"></i> Task Instructions:</strong>
-                        ${instrText}
+                    <div onclick="openInstructionsModal(\`${encodeURIComponent(instrText)}\`)" style="cursor:pointer; background:rgba(16, 185, 129, 0.05); border:1px dashed var(--green); padding:10px; margin:0 12px 10px; border-radius:8px; font-size:0.85rem; max-height:120px; overflow-y:hidden; transition:all 0.2s;">
+                        <strong style="color:var(--green); display:block; margin-bottom:6px;"><i class="fas fa-clipboard-list"></i> Task Instructions (Click to read):</strong>
+                        <span style="color:var(--text-main); white-space:pre-wrap; word-break:break-word; line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">${instrText}</span>
                     </div>
                 `;
             }
@@ -815,7 +841,7 @@ async function buildHomePage() {
                     </div>
                     ${instructionsHtml}
                     <div style="padding:0 12px 12px;">
-                        <button class="action-btn btn-subscribe" onclick="openTask(${req.id}, '${actualLink.replace(/'/g, '')}', '${req.type || 'subscribe'}')" style="margin-bottom:5px;">
+                        <button class="action-btn btn-subscribe" onclick="openTask(${req.id}, '${actualLink.replace(/'/g, '')}', '${req.type || 'subscribe'}', ${req.timer_seconds || 0})" style="margin-bottom:5px;">
                             <i class="fas fa-play"></i> Start Task
                         </button>
                         <button onclick="reportCampaign(${req.id})" style="background:transparent; color:var(--gray); border:none; cursor:pointer; font-size:0.8rem; text-decoration:underline;">
@@ -843,6 +869,11 @@ window.setTimeFilter = function(val) {
     renderPage('home');
 };
 
+window.setSortFilter = function(val) {
+    state.sortFilter = val;
+    renderPage('home');
+};
+
 window.toggleOnlineFilter = function(checked) {
     state.showOnlineOnly = checked;
     renderPage('home');
@@ -867,16 +898,21 @@ window.reportCampaign = async function(taskId) {
     }
 }
 
-window.openTask = async function(taskId, taskUrl, type) {
+window.openTask = async function(taskId, taskUrl, type, timerSeconds = 0) {
     // GUEST MODE: require login before doing any task
     if (!state.user) {
-        showToast('Please login or sign up to start earning! 🚀', 'info');
+        showToast('Please login or sign up to start earning! 🎁', 'info');
         document.getElementById('userAuthModal').classList.add('active');
         return;
     }
     state.currentTaskId = taskId;
     state.currentTaskType = type;
     
+    if (type === 'website') {
+        window.location.href = `/surf.html?taskId=${taskId}&url=${encodeURIComponent(taskUrl)}&timer=${timerSeconds}`;
+        return;
+    }
+
     let taskWindow = null;
     if (type !== 'view') {
         taskWindow = window.open(taskUrl, '_blank');
@@ -2478,67 +2514,142 @@ window.updateCampaignLabels = function() {
     const platformSelect = document.getElementById('campaignPlatformSelect');
     if (!platformSelect || platformSelect.selectedIndex === -1) return;
     const platformName = platformSelect.options[platformSelect.selectedIndex].text.toLowerCase();
-    const isSubscribe = state.campaignType === 'subscribe';
-    const isCustom = state.campaignType === 'custom' || platformName.includes('website') || platformName.includes('custom');
     
     const instrGroup = document.getElementById('campaignInstructionsGroup');
-    if (instrGroup) instrGroup.style.display = isCustom ? 'block' : 'none';
+    const timerGroup = document.getElementById('campaignTimerGroup');
+    const urlLabel = document.getElementById('campaignUrlLabel');
+    const urlInput = document.getElementById('campaignUrl');
+    const customCoinsGroup = document.getElementById('campaignCustomCoinsGroup');
     
-    const urlLabel = document.querySelector('label[for="campaignUrl"]') || document.getElementById('campaignUrlLabel') || document.querySelector('#campaignFormStep label:nth-of-type(2)');
-    if (!urlLabel) return; // Fallback if ID is missing
-
-    let labelText = 'Target Link *';
-    let placeholderText = 'Enter valid URL';
-
-    if (isCustom) {
-        labelText = 'Website / App Link *';
-        placeholderText = 'e.g. https://yourwebsite.com';
-    } else if (platformName.includes('youtube')) {
-        labelText = isSubscribe ? 'Channel Link *' : 'Video Link *';
-        placeholderText = isSubscribe ? 'e.g. youtube.com/@channel' : 'e.g. youtube.com/watch?v=...';
-    } else if (platformName.includes('tiktok')) {
-        labelText = isSubscribe ? 'Profile Link *' : 'Video Link *';
-        placeholderText = isSubscribe ? 'e.g. tiktok.com/@username' : 'e.g. tiktok.com/@user/video/...';
-    } else if (platformName.includes('instagram')) {
-        labelText = isSubscribe ? 'Profile Link *' : 'Post/Reel Link *';
-        placeholderText = isSubscribe ? 'e.g. instagram.com/username' : 'e.g. instagram.com/p/...';
-    } else if (platformName.includes('facebook')) {
-        labelText = isSubscribe ? 'Page/Profile Link *' : 'Post/Video Link *';
-        placeholderText = isSubscribe ? 'e.g. facebook.com/page' : 'e.g. facebook.com/user/posts/...';
-    } else if (platformName.includes('reddit')) {
-        labelText = isSubscribe ? 'Subreddit / User Link *' : 'Post / Comment Link *';
-        placeholderText = isSubscribe ? 'e.g. reddit.com/r/community' : 'e.g. reddit.com/r/.../comments/...';
-    } else if (platformName.includes('telegram')) {
-        labelText = isSubscribe ? 'Channel / Group Link *' : 'Message Link *';
-        placeholderText = 'e.g. t.me/channelname';
-    } else if (platformName.includes('discord')) {
-        labelText = 'Server Invite Link *';
-        placeholderText = 'e.g. discord.gg/invitecode';
-    } else if (platformName.includes('spotify')) {
-        labelText = isSubscribe ? 'Artist / User Link *' : 'Track / Playlist Link *';
-        placeholderText = 'e.g. open.spotify.com/artist/...';
-    } else if (platformName.includes('twitch')) {
-        labelText = isSubscribe ? 'Channel Link *' : 'Video / Clip Link *';
-        placeholderText = 'e.g. twitch.tv/username';
-    } else if (platformName.includes('x') || platformName.includes('twitter')) {
-        labelText = isSubscribe ? 'Profile Link *' : 'Tweet Link *';
-        placeholderText = 'e.g. x.com/username';
+    // Default states
+    instrGroup.style.display = 'none';
+    timerGroup.style.display = 'none';
+    customCoinsGroup.style.display = 'none';
+    
+    const isSubscribe = state.campaignType === 'subscribe';
+    const isWebsite = state.campaignType === 'website';
+    const isCustom = state.campaignType === 'custom' || platformName.includes('custom') || platformName.includes('website');
+    const nameLabel = document.getElementById('campaignNameLabel');
+    
+    if (nameLabel) {
+        if (isCustom) nameLabel.innerText = 'App / Campaign Name (Optional)';
+        else if (isWebsite) nameLabel.innerText = 'Website Name (Optional)';
+        else nameLabel.innerText = 'Channel / Profile Name (Optional)';
     }
 
-    urlLabel.innerText = labelText;
-    document.getElementById('campaignUrl').placeholder = placeholderText;
+    if (isWebsite) {
+        timerGroup.style.display = 'block';
+        urlLabel.innerHTML = 'Target URL *';
+        urlInput.placeholder = 'https://...';
+    } else if (isCustom) {
+        instrGroup.style.display = 'block';
+        customCoinsGroup.style.display = 'block';
+        urlLabel.innerHTML = 'Target URL *';
+        urlInput.placeholder = 'https://...';
+    } else {
+        urlLabel.innerHTML = 'Target URL *';
+    }
+
+    // Platform logic for URL labels
+    if (!isCustom) {
+        let labelText = 'Target Link *';
+        let placeholderText = 'Enter valid URL';
+        if (platformName.includes('youtube')) {
+            labelText = isSubscribe ? 'Channel Link *' : 'Video Link *';
+            placeholderText = isSubscribe ? 'e.g. youtube.com/@channel' : 'e.g. youtube.com/watch?v=...';
+        } else if (platformName.includes('tiktok')) {
+            labelText = isSubscribe ? 'Profile Link *' : 'Video Link *';
+            placeholderText = isSubscribe ? 'e.g. tiktok.com/@username' : 'e.g. tiktok.com/@user/video/...';
+        } else if (platformName.includes('instagram')) {
+            labelText = isSubscribe ? 'Profile Link *' : 'Post/Reel Link *';
+            placeholderText = isSubscribe ? 'e.g. instagram.com/username' : 'e.g. instagram.com/p/...';
+        } else if (platformName.includes('facebook')) {
+            labelText = isSubscribe ? 'Page/Profile Link *' : 'Post/Video Link *';
+            placeholderText = isSubscribe ? 'e.g. facebook.com/page' : 'e.g. facebook.com/user/posts/...';
+        } else if (platformName.includes('reddit')) {
+            labelText = isSubscribe ? 'Subreddit / User Link *' : 'Post / Comment Link *';
+            placeholderText = isSubscribe ? 'e.g. reddit.com/r/community' : 'e.g. reddit.com/r/.../comments/...';
+        } else if (platformName.includes('telegram')) {
+            labelText = isSubscribe ? 'Channel / Group Link *' : 'Message Link *';
+            placeholderText = 'e.g. t.me/channelname';
+        } else if (platformName.includes('discord')) {
+            labelText = 'Server Invite Link *';
+            placeholderText = 'e.g. discord.gg/invitecode';
+        } else if (platformName.includes('spotify')) {
+            labelText = isSubscribe ? 'Artist / User Link *' : 'Track / Playlist Link *';
+            placeholderText = 'e.g. open.spotify.com/artist/...';
+        } else if (platformName.includes('twitch')) {
+            labelText = isSubscribe ? 'Channel Link *' : 'Video / Clip Link *';
+            placeholderText = 'e.g. twitch.tv/username';
+        } else if (platformName.includes('x') || platformName.includes('twitter')) {
+            labelText = isSubscribe ? 'Profile Link *' : 'Tweet Link *';
+            placeholderText = 'e.g. x.com/username';
+        }
+        urlLabel.innerText = labelText;
+        urlInput.placeholder = placeholderText;
+    }
 };
 
 function selectCampaignType(type) {
     state.campaignType = type;
-    const coinsEach = type === 'subscribe' ? 10 : type === 'comment' ? 8 : type === 'view' ? 2 : type === 'custom' ? 15 : 5;
+    const coinsEach = type === 'subscribe' ? 10 : type === 'comment' ? 8 : type === 'view' ? 2 : type === 'custom' ? 15 : type === 'website' ? 10 : 5;
     document.getElementById('campaignCoinsEach').innerText = coinsEach;
     document.getElementById('campaignFormTitle').innerHTML = type === 'subscribe'
         ? '<i class="fas fa-user-plus"></i> Subscribe Campaign'
-        : type === 'view' ? '<i class="fas fa-eye"></i> Views Campaign (Auto)' : type === 'comment' ? '<i class="fas fa-comment"></i> Comment Campaign' : type === 'custom' ? '<i class="fas fa-check-double"></i> Custom Task / App' : '<i class="fas fa-thumbs-up"></i> Like Campaign';
+        : type === 'view' ? '<i class="fas fa-eye"></i> Views Campaign (Auto)' : type === 'comment' ? '<i class="fas fa-comment"></i> Comment Campaign' : type === 'custom' ? '<i class="fas fa-check-double"></i> Custom Task / App' : type === 'website' ? '<i class="fas fa-globe"></i> Website Surfing' : '<i class="fas fa-thumbs-up"></i> Like Campaign';
     document.getElementById('campaignUserBalance').innerText = `${state.user.coins} coins`;
     document.getElementById('campaignTotalCost').innerText = '0 coins';
     document.getElementById('campaignCount').value = '';
+    
+    // Platform Dropdown Logic
+    const platformGroup = document.getElementById('campaignPlatformGroup');
+    const sel = document.getElementById('campaignPlatformSelect');
+    if (platformGroup && sel) {
+        
+        // Hide auto-approve timer for automatic tasks like website surfing
+        const autoApproveGroup = document.getElementById('campaignAutoApproveGroup');
+        if (autoApproveGroup) {
+            if (type === 'website') {
+                autoApproveGroup.style.display = 'none';
+            } else {
+                autoApproveGroup.style.display = 'block';
+            }
+        }
+
+        if (type === 'custom' || type === 'website') {
+            platformGroup.style.display = 'none';
+            // Auto select the right platform internally
+            for (let i = 0; i < sel.options.length; i++) {
+                const txt = sel.options[i].text.toLowerCase();
+                if (type === 'custom' && (txt.includes('custom') || txt.includes('app'))) {
+                    sel.selectedIndex = i;
+                    break;
+                } else if (type === 'website' && (txt.includes('website') || txt.includes('surfing'))) {
+                    sel.selectedIndex = i;
+                    break;
+                }
+            }
+        } else {
+            platformGroup.style.display = 'block';
+            // Hide custom/website from normal types, show others
+            let firstVisibleIndex = -1;
+            for (let i = 0; i < sel.options.length; i++) {
+                const txt = sel.options[i].text.toLowerCase();
+                const isCustomOrWeb = txt.includes('custom') || txt.includes('app') || txt.includes('website') || txt.includes('surfing');
+                if (isCustomOrWeb) {
+                    sel.options[i].style.display = 'none';
+                } else {
+                    sel.options[i].style.display = 'block';
+                    if (firstVisibleIndex === -1 && sel.options[i].value) firstVisibleIndex = i;
+                }
+            }
+            // If currently selected is hidden, switch to first visible
+            if (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].style.display === 'none' && firstVisibleIndex !== -1) {
+                sel.selectedIndex = firstVisibleIndex;
+            }
+        }
+    }
+
     document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
     document.getElementById('campaignFormStep').classList.add('active');
     updateCampaignLabels();
@@ -2577,7 +2688,21 @@ window.fetchUrlMetadata = async function(url) {
 
 function calcCampaignCost() {
     const count = parseInt(document.getElementById('campaignCount').value) || 0;
-    const coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : state.campaignType === 'custom' ? 15 : 5;
+    let coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : state.campaignType === 'custom' ? 15 : 5;
+    
+    if (state.campaignType === 'website') {
+        const timerVal = parseInt(document.getElementById('campaignTimer').value) || 15;
+        if (timerVal === 15) coinsEach = 10;
+        else if (timerVal === 30) coinsEach = 15;
+        else if (timerVal === 60) coinsEach = 25;
+        else if (timerVal === 300) coinsEach = 70;
+        else if (timerVal === 600) coinsEach = 120;
+    } else if (state.campaignType === 'custom') {
+        const customVal = parseInt(document.getElementById('campaignCustomCoins').value) || 15;
+        coinsEach = Math.max(15, customVal);
+    }
+    
+    document.getElementById('campaignCoinsEach').innerText = coinsEach;
     document.getElementById('campaignTotalCost').innerText = `${count * coinsEach} coins`;
 }
 
@@ -2595,12 +2720,15 @@ async function submitCampaignForm() {
     
     const instrGroup = document.getElementById('campaignInstructionsGroup');
     const instructions = instrGroup && instrGroup.style.display !== 'none' ? document.getElementById('campaignInstructions').value.trim() : '';
+    const timer = document.getElementById('campaignTimer') ? parseInt(document.getElementById('campaignTimer').value) : 0;
+    const customCoins = document.getElementById('campaignCustomCoins') ? parseInt(document.getElementById('campaignCustomCoins').value) : 15;
 
-    if (!url || !count || count < 10) return showToast('Please provide URL and Min 10 quantity.', 'error');
+    if (!count || count < 10) return showToast('Please provide Min 10 quantity.', 'error');
+    if (state.campaignType !== 'custom' && !url) return showToast('Please provide URL.', 'error');
     if (instrGroup && instrGroup.style.display !== 'none' && !instructions) return showToast('Please provide Task Instructions.', 'error');
     
     url = url.trim();
-    if (!/^https?:\/\//i.test(url)) {
+    if (url && !/^https?:\/\//i.test(url)) {
         url = 'https://' + url;
     }
 
@@ -2608,10 +2736,11 @@ async function submitCampaignForm() {
     const urlLower = url.toLowerCase();
     let isValidUrl = false;
     const isSubscribe = state.campaignType === 'subscribe';
+    const isWebsite = state.campaignType === 'website';
     const isCustom = state.campaignType === 'custom' || platformName.includes('custom') || platformName.includes('website');
     
-    if (isCustom) {
-        isValidUrl = true; // allow any for custom
+    if (isCustom || isWebsite) {
+        isValidUrl = true; // allow any for custom/website
     } else if (platformName.includes('youtube')) {
         if (!urlLower.includes('youtube.com/') && !urlLower.includes('youtu.be/')) return showToast('Please enter a valid YouTube URL.', 'error');
         if (isSubscribe) {
@@ -2711,7 +2840,19 @@ async function submitCampaignForm() {
         isValidUrl = true;
     }
 
-    const coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : state.campaignType === 'custom' ? 15 : 5;
+    let coinsEach = state.campaignType === 'subscribe' ? 10 : state.campaignType === 'comment' ? 8 : state.campaignType === 'view' ? 2 : state.campaignType === 'custom' ? 15 : 5;
+    
+    if (state.campaignType === 'website') {
+        const timerVal = parseInt(document.getElementById('campaignTimer').value) || 15;
+        if (timerVal === 15) coinsEach = 10;
+        else if (timerVal === 30) coinsEach = 15;
+        else if (timerVal === 60) coinsEach = 25;
+        else if (timerVal === 300) coinsEach = 70;
+        else if (timerVal === 600) coinsEach = 120;
+    } else if (state.campaignType === 'custom') {
+        coinsEach = Math.max(15, customCoins);
+    }
+
     const totalCost = count * coinsEach;
     if (state.user.coins < totalCost) return showToast(`Not enough coins! Need ${totalCost}, you have ${state.user.coins}`, 'error');
     
@@ -2734,7 +2875,8 @@ async function submitCampaignForm() {
             reward_coins: coinsEach, 
             slots: count, 
             type: state.campaignType,
-            auto_approve_hours: autoApproveHours
+            auto_approve_hours: autoApproveHours,
+            timer_seconds: timer
         });
         const res = await api.auth.me();
         state.user = res.user;
@@ -3325,3 +3467,121 @@ window.deleteAdminTutorialLink = async function(id) {
         showToast(e.message, 'error');
     }
 };
+// ===== WALLET LOGIC =====
+function openWalletModal() {
+    document.getElementById('walletModal').style.display = 'flex';
+    document.getElementById('walletGemsAmount').innerText = state.user ? (state.user.gems || 0) : 0;
+    showWalletTab('convert');
+}
+
+function closeWalletModal() {
+    document.getElementById('walletModal').style.display = 'none';
+}
+
+function showWalletTab(tab) {
+    if (tab === 'convert') {
+        document.getElementById('walletConvertSection').style.display = 'block';
+        document.getElementById('walletWithdrawSection').style.display = 'none';
+        document.getElementById('walletTabConvert').style.background = 'var(--primary)';
+        document.getElementById('walletTabConvert').style.color = '#fff';
+        document.getElementById('walletTabWithdraw').style.background = '#333';
+        document.getElementById('walletTabWithdraw').style.color = 'var(--gray)';
+    } else {
+        document.getElementById('walletConvertSection').style.display = 'none';
+        document.getElementById('walletWithdrawSection').style.display = 'block';
+        document.getElementById('walletTabConvert').style.background = '#333';
+        document.getElementById('walletTabConvert').style.color = 'var(--gray)';
+        document.getElementById('walletTabWithdraw').style.background = 'var(--primary)';
+        document.getElementById('walletTabWithdraw').style.color = '#fff';
+        
+        const gems = state.user ? (state.user.gems || 0) : 0;
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        if (gems >= 5000) {
+            withdrawBtn.style.opacity = '1';
+            withdrawBtn.style.pointerEvents = 'auto';
+            withdrawBtn.innerText = 'Request Withdrawal';
+        } else {
+            withdrawBtn.style.opacity = '0.5';
+            withdrawBtn.style.pointerEvents = 'none';
+            withdrawBtn.innerText = 'Request Withdrawal (Need 5,000 Gems)';
+        }
+    }
+}
+
+function updateConvertPreview() {
+    const input = document.getElementById('convertGemsInput').value;
+    const gems = parseInt(input) || 0;
+    document.getElementById('convertCoinsPreview').innerText = gems * 5;
+}
+
+async function submitGemsConversion() {
+    const input = document.getElementById('convertGemsInput').value;
+    const gemsToConvert = parseInt(input);
+    if (!gemsToConvert || gemsToConvert <= 0) return showToast('Please enter a valid amount', 'error');
+    if (gemsToConvert > (state.user.gems || 0)) return showToast('Insufficient Gems!', 'error');
+    
+    try {
+        const res = await fetch(${API_URL}/wallet/convert, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': Bearer  },
+            body: JSON.stringify({ gemsToConvert })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Conversion failed');
+        
+        state.user.gems -= data.convertedGems;
+        state.user.coins += data.receivedCoins;
+        
+        updateCoinDisplay(state.user.coins);
+        updateGemsDisplay(state.user.gems);
+        document.getElementById('walletGemsAmount').innerText = state.user.gems;
+        document.getElementById('convertGemsInput').value = '';
+        updateConvertPreview();
+        
+        showToast(\Success! Converted \ Gems to \ Coins!\, 'success');
+    } catch(err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function submitWithdrawal() {
+    const method = document.getElementById('withdrawMethodSelect').value;
+    const details = document.getElementById('withdrawDetailsInput').value;
+    
+    if (!details) return showToast('Please enter your payment details', 'error');
+    
+    try {
+        const res = await fetch(${API_URL}/wallet/withdraw, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': Bearer  },
+            body: JSON.stringify({ method, details })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
+        
+        state.user.gems -= 5000;
+        updateGemsDisplay(state.user.gems);
+        document.getElementById('walletGemsAmount').innerText = state.user.gems;
+        document.getElementById('withdrawDetailsInput').value = '';
+        showWalletTab('withdraw'); // Re-evaluate button state
+        
+        showToast('Withdrawal request submitted successfully! Admin will review it.', 'success');
+    } catch(err) {
+        showToast(err.message, 'error');
+    }
+}
+// ===== INSTRUCTIONS MODAL =====
+function openInstructionsModal(encodedInstr) {
+    const instr = decodeURIComponent(encodedInstr);
+    const modal = document.getElementById('instructionsModal');
+    const textEl = document.getElementById('instructionsModalText');
+    if(modal && textEl) {
+        textEl.innerText = instr;
+        modal.style.display = 'flex';
+    }
+}
+
+function closeInstructionsModal() {
+    const modal = document.getElementById('instructionsModal');
+    if(modal) modal.style.display = 'none';
+}

@@ -35,6 +35,7 @@ model User {
   lastSeen         DateTime?
   totalTasksDone   Int                @default(0)
   totalCampaignsRun Int               @default(0)
+  gems             Int                @default(0)
   
   // Voice Announcements
   lastVoicePlayedAt DateTime?
@@ -60,6 +61,20 @@ model User {
   notifications    Notification[]
   deposits         Deposit[]          @relation("UserDeposits")
   directOrders     DirectOrder[]      @relation("UserDirectOrders")
+  withdrawals      WithdrawalRequest[] @relation("UserWithdrawals")
+}
+
+model WithdrawalRequest {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation("UserWithdrawals", fields: [userId], references: [id])
+  gems      Int
+  amountUsd Float
+  status    String   @default("pending") // pending, approved, rejected
+  method    String   // EasyPaisa, JazzCash, etc.
+  details   String   // Account number details
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Notification {
@@ -87,6 +102,7 @@ model FollowRequest {
   slots_remaining Int
   total_slots     Int          @default(0)
   auto_approve_hours Float       @default(24)
+  timer_seconds   Int          @default(0)
   type            String       @default("subscribe") // "subscribe", "like", "view"
   verificationType String      @default("manual") // "manual", "auto"
   status          String       @default("active") // "active", "completed", "cancelled"

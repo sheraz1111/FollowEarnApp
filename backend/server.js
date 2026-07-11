@@ -81,7 +81,7 @@ app.post('/api/register', async (req, res) => {
             data: { name, email, password_hash, role, coins_balance: 50, referralCode: myReferralCode, referredById, lastSeen: new Date(), country }
         });
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt } });
+        res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, coins: user.coins_balance, gems: user.gems, lastVoicePlayedAt: user.lastVoicePlayedAt } });
     } catch (err) {
         res.status(400).json({ error: 'Email already exists or invalid data' });
     }
@@ -118,7 +118,7 @@ app.post('/api/login', async (req, res) => {
         });
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, gems: user.gems, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
     } catch (e) {
         console.error('Login error:', e);
         res.status(500).json({ error: 'Internal server error during login.' });
@@ -153,7 +153,7 @@ app.post('/api/google-login', async (req, res) => {
         }
         
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
-        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, gems: user.gems, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
     } catch (e) {
         res.status(400).json({ error: 'Invalid Google token' });
     }
@@ -311,7 +311,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 app.get('/api/me', authenticate, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, referralCode: user.referralCode, isVIP: user.isVIP, uiId: user.uiId, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
+    res.json({ user: { id: user.id, name: user.name, role: user.role, coins: user.coins_balance, gems: user.gems, referralCode: user.referralCode, isVIP: user.isVIP, uiId: user.uiId, lastVoicePlayedAt: user.lastVoicePlayedAt, tiktokUsername: user.tiktokUsername, youtubeChannelUrl: user.youtubeChannelUrl, instagramUsername: user.instagramUsername } });
 });
 
 app.get('/api/admin/direct-orders', authenticate, async (req, res) => {
@@ -410,15 +410,21 @@ app.get('/api/platforms', async (req, res) => {
 // --- FOLLOW REQUESTS ---
 app.get('/api/requests', async (req, res) => {
     try {
-        // Optional auth: if token provided, filter out completed campaigns
+        // Optional auth: if token provided, filter out campaigns completed in the last 24 hours
         let completedRequestIds = [];
+        let currentUserId = null;
         const authHeader = req.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
             try {
                 const token = authHeader.split(' ')[1];
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                currentUserId = decoded.id;
+                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
                 const mySubmissions = await prisma.submission.findMany({
-                    where: { userId: decoded.userId },
+                    where: { 
+                        userId: decoded.id,
+                        createdAt: { gte: twentyFourHoursAgo }
+                    },
                     select: { requestId: true }
                 });
                 completedRequestIds = mySubmissions.map(s => s.requestId);
@@ -431,9 +437,14 @@ app.get('/api/requests', async (req, res) => {
             where: { 
                 status: 'active', 
                 slots_remaining: { gt: 0 },
+                ...(currentUserId ? { userId: { not: currentUserId } } : {}),
                 ...(completedRequestIds.length > 0 ? { id: { notIn: completedRequestIds } } : {})
             },
-            include: { platform: true, user: { select: { name: true, lastSeen: true } } }
+            include: { platform: true, user: { select: { name: true, lastSeen: true } } },
+            orderBy: [
+                { reward_coins: 'desc' },
+                { createdAt: 'desc' }
+            ]
         });
         res.json(requests);
     } catch (e) {
@@ -560,7 +571,25 @@ app.post('/api/tasks/verify-auto', authenticate, async (req, res) => {
 });
 
 app.post('/api/requests', authenticate, async (req, res) => {
-    const { platformId, target_link, reward_coins, slots, type, auto_approve_hours, verificationType } = req.body;
+    let { platformId, target_link, reward_coins, slots, type, auto_approve_hours, verificationType, timer_seconds } = req.body;
+    
+    // Validate timer and force exact reward coins for website surfing
+    timer_seconds = timer_seconds ? parseInt(timer_seconds) : 0;
+    if (type === 'website') {
+        if (timer_seconds === 15) reward_coins = 10;
+        else if (timer_seconds === 30) reward_coins = 15;
+        else if (timer_seconds === 60) reward_coins = 25;
+        else if (timer_seconds === 300) reward_coins = 70;
+        else if (timer_seconds === 600) reward_coins = 120;
+        else return res.status(400).json({ error: 'Invalid timer duration selected.' });
+    } else if (type === 'custom') {
+        // Allow custom reward_coins for custom tasks, with a minimum of 15
+        reward_coins = parseInt(reward_coins);
+        if (isNaN(reward_coins) || reward_coins < 15) {
+            return res.status(400).json({ error: 'Custom tasks require a minimum of 15 coins per task.' });
+        }
+    }
+    
     const totalCost = reward_coins * slots;
     
     // Check balance
@@ -570,12 +599,15 @@ app.post('/api/requests', authenticate, async (req, res) => {
     }
 
     // Deduct coins & create request transaction
+    const bonusGems = Math.floor(totalCost / 100);
+
     let transactionOperations = [
         prisma.user.update({
             where: { id: req.user.id },
             data: { 
                 coins_balance: { decrement: totalCost },
-                totalCampaignsRun: { increment: 1 }
+                totalCampaignsRun: { increment: 1 },
+                gems: { increment: bonusGems }
             }
         }),
         prisma.transaction.create({
@@ -590,6 +622,7 @@ app.post('/api/requests', authenticate, async (req, res) => {
                 slots_remaining: parseInt(slots),
                 total_slots: parseInt(slots),
                 auto_approve_hours: parseFloat(auto_approve_hours) || 24,
+                timer_seconds: timer_seconds,
                 type: type || 'subscribe',
                 verificationType: verificationType === 'auto' ? 'auto' : 'manual'
             }
@@ -637,6 +670,79 @@ app.post('/api/upload', authenticate, upload.single('screenshot'), async (req, r
     res.json({ success: true, fileUrl });
 });
 
+// --- AUTO-VERIFY FOR PTC WEBSITES ---
+app.post('/api/submissions/auto-verify', authenticate, async (req, res) => {
+    try {
+        const { requestId } = req.body;
+        const request = await prisma.followRequest.findUnique({ where: { id: parseInt(requestId) } });
+        
+        if (!request) return res.status(404).json({ error: 'Campaign not found' });
+        if (request.type !== 'website') return res.status(400).json({ error: 'Not an auto-verify campaign' });
+        if (request.slots_remaining <= 0 || request.status !== 'active') {
+            return res.status(400).json({ error: 'This campaign is already full or inactive.' });
+        }
+
+        // Check if user already submitted in the last 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const existingSub = await prisma.submission.findFirst({
+            where: { 
+                requestId: parseInt(requestId), 
+                userId: req.user.id,
+                createdAt: { gte: twentyFourHoursAgo }
+            }
+        });
+        if (existingSub) {
+            return res.status(400).json({ error: 'You have already completed this task in the last 24 hours. Please wait before trying again.' });
+        }
+
+        // Ensure VIP users get 10% bonus coins (same as normal tasks)
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        let finalReward = request.reward_coins;
+        let isVip = false;
+        if (user.vipExpiry && new Date(user.vipExpiry) > new Date()) {
+            finalReward = Math.ceil(finalReward * 1.1); // 10% bonus
+            isVip = true;
+        }
+
+        const newStatus = (request.slots_remaining - 1) <= 0 ? 'completed' : 'active';
+
+        // Add coins, decrement slots, and create approved submission
+        const [submission] = await prisma.$transaction([
+            prisma.submission.create({
+                data: {
+                    requestId: parseInt(requestId),
+                    userId: req.user.id,
+                    screenshot_url: 'AUTO_VERIFIED_PTC',
+                    status: 'approved'
+                }
+            }),
+            prisma.followRequest.update({
+                where: { id: parseInt(requestId) },
+                data: { 
+                    slots_remaining: { decrement: 1 },
+                    status: newStatus
+                }
+            }),
+            prisma.user.update({
+                where: { id: req.user.id },
+                data: { 
+                    coins_balance: { increment: finalReward },
+                    totalTasksDone: { increment: 1 },
+                    gems: { increment: 1 }
+                }
+            }),
+            prisma.transaction.create({
+                data: { userId: req.user.id, type: 'earn', amount: finalReward }
+            })
+        ]);
+
+        res.json({ success: true, coins: finalReward, isVip });
+    } catch(e) {
+        console.error("Auto Verify Error:", e);
+        res.status(500).json({ error: 'Server error during verification' });
+    }
+});
+
 app.post('/api/submissions', authenticate, upload.single('screenshot'), async (req, res) => {
     const { requestId } = req.body;
     if (!req.file) return res.status(400).json({ error: 'Screenshot required' });
@@ -647,7 +753,19 @@ app.post('/api/submissions', authenticate, upload.single('screenshot'), async (r
         return res.status(400).json({ error: 'This campaign is already full or inactive.' });
     }
 
-    // No more 30-second fraud check based on user request
+    // 24-Hour Duplicate User Check
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const existingUserSub = await prisma.submission.findFirst({
+        where: { 
+            requestId: parseInt(requestId), 
+            userId: req.user.id,
+            createdAt: { gte: twentyFourHoursAgo }
+        }
+    });
+    if (existingUserSub) {
+        return res.status(400).json({ error: 'You have already submitted a request for this campaign in the last 24 hours.' });
+    }
+
     // Directly accept submission
 
     const b64 = req.file.buffer.toString('base64');
@@ -739,7 +857,8 @@ app.patch('/api/submissions/:id/approve', authenticate, async (req, res) => {
             where: { id: submission.userId },
             data: { 
                 coins_balance: { increment: earnedCoins },
-                totalTasksDone: { increment: 1 }
+                totalTasksDone: { increment: 1 },
+                gems: { increment: 1 }
             }
         }),
         prisma.transaction.create({
@@ -1358,6 +1477,19 @@ app.post('/api/submissions/auto-view', authenticate, async (req, res) => {
     // Clean up active task
     await prisma.activeTask.delete({ where: { id: activeTask.id } });
 
+    // Check if user already submitted in the last 24 hours
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const existingSub = await prisma.submission.findFirst({
+        where: { 
+            requestId: parseInt(requestId), 
+            userId: req.user.id,
+            createdAt: { gte: twentyFourHoursAgo }
+        }
+    });
+    if (existingSub) {
+        return res.status(400).json({ error: 'You have already completed this task in the last 24 hours.' });
+    }
+
     // Directly award coins (Auto Approve for Views)
     const request = await prisma.followRequest.findUnique({ where: { id: parseInt(requestId) } });
     
@@ -1441,7 +1573,8 @@ setInterval(async () => {
                     where: { id: sub.userId },
                     data: { 
                         coins_balance: { increment: sub.request.reward_coins },
-                        totalTasksDone: { increment: 1 }
+                        totalTasksDone: { increment: 1 },
+                        gems: { increment: 1 }
                     }
                 }),
                 prisma.transaction.create({
@@ -1511,7 +1644,8 @@ setInterval(async () => {
                         where: { id: sub.userId },
                         data: { 
                             coins_balance: { increment: sub.request.reward_coins },
-                            totalTasksDone: { increment: 1 }
+                            totalTasksDone: { increment: 1 },
+                            gems: { increment: 1 }
                         }
                     }),
                     prisma.transaction.create({
@@ -1659,7 +1793,7 @@ app.get('/api/cron/auto-approve', async (req, res) => {
                     }),
                     prisma.user.update({
                         where: { id: sub.userId },
-                        data: { coins_balance: { increment: earnedCoins }, totalTasksDone: { increment: 1 } }
+                        data: { coins_balance: { increment: earnedCoins }, totalTasksDone: { increment: 1 }, gems: { increment: 1 } }
                     }),
                     prisma.transaction.create({
                         data: { userId: sub.userId, type: 'earn', amount: earnedCoins, related_submission_id: sub.id }
@@ -1739,6 +1873,74 @@ app.delete('/api/tutorial-links/:id', authenticate, async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: 'Failed to delete tutorial link' });
+    }
+});
+
+// --- WALLET: CONVERT & WITHDRAW ---
+app.post('/api/wallet/convert', authenticate, async (req, res) => {
+    try {
+        const { gemsToConvert } = req.body;
+        const amount = parseInt(gemsToConvert);
+        if (isNaN(amount) || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        if (user.gems < amount) return res.status(400).json({ error: 'Insufficient Gems' });
+
+        const coinsToAdd = amount * 5; // 1 Gem = 5 Coins
+
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: user.id },
+                data: { 
+                    gems: { decrement: amount },
+                    coins_balance: { increment: coinsToAdd }
+                }
+            }),
+            prisma.transaction.create({
+                data: { userId: user.id, type: 'earn', amount: coinsToAdd }
+            })
+        ]);
+
+        res.json({ success: true, convertedGems: amount, receivedCoins: coinsToAdd });
+    } catch(e) {
+        console.error('Convert Error:', e);
+        res.status(500).json({ error: 'Server error during conversion' });
+    }
+});
+
+app.post('/api/wallet/withdraw', authenticate, async (req, res) => {
+    try {
+        const { method, details } = req.body;
+        if (!method || !details) return res.status(400).json({ error: 'Method and details required' });
+
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        
+        // Ensure they have exactly or more than 5000 gems
+        if (user.gems < 5000) return res.status(400).json({ error: 'Minimum 5000 Gems required for withdrawal' });
+
+        const withdrawalAmountGems = 5000;
+        const amountUsd = 5.00;
+
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: user.id },
+                data: { gems: { decrement: withdrawalAmountGems } }
+            }),
+            prisma.withdrawalRequest.create({
+                data: {
+                    userId: user.id,
+                    gems: withdrawalAmountGems,
+                    amountUsd: amountUsd,
+                    method: method,
+                    details: details
+                }
+            })
+        ]);
+
+        res.json({ success: true, message: 'Withdrawal request submitted successfully' });
+    } catch(e) {
+        console.error('Withdrawal Error:', e);
+        res.status(500).json({ error: 'Server error during withdrawal' });
     }
 });
 
