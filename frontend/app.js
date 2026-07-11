@@ -1460,11 +1460,6 @@ async function buildEarnPage() {
     let html = `<div class="animate-fade">
         <h2 style="color:var(--gold);margin-bottom:20px;"><i class="fas fa-coins"></i> Earn & Wallet</h2>
 
-        <div class="notice-box" style="margin-bottom:20px; background:linear-gradient(45deg, rgba(255, 71, 87, 0.1), rgba(255, 165, 2, 0.1)); border:1px dashed var(--gold);">
-            <div class="notice-title" style="color:var(--gold);"><i class="fas fa-rocket"></i> Coming Soon: Withdraw Your Coins!</div>
-            <p style="color:var(--text-main); font-size:0.9rem; margin-top:5px;">Very soon, you will be able to withdraw your earned coins for real money (JazzCash, Easypaisa, etc.). Start collecting coins now!</p>
-        </div>
-
         <div class="stats-grid" style="margin-bottom:20px;">
             <div class="stat-card" style="border-color:var(--gold)">
                 <div style="color:var(--gray);font-size:0.85rem;margin-bottom:8px;">Your Coins</div>
