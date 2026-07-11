@@ -26,7 +26,7 @@ async function lsApi(path, method = 'GET', body = null) {
 app.post('/api/wallet/buy-coins', authenticate, async (req, res) => {
     try {
         const { coins, priceUsd, directOrder } = req.body;
-        const user = await prisma.user.findUnique({ where: { id: req.userId } });
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         const storeId = process.env.LEMONSQUEEZY_STORE_ID || '419815';
