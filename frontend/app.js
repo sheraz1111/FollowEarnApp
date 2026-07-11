@@ -3467,6 +3467,7 @@ window.deleteAdminTutorialLink = async function(id) {
         showToast(e.message, 'error');
     }
 };
+
 // ===== WALLET LOGIC =====
 function openWalletModal() {
     document.getElementById('walletModal').style.display = 'flex';
@@ -3521,9 +3522,9 @@ async function submitGemsConversion() {
     if (gemsToConvert > (state.user.gems || 0)) return showToast('Insufficient Gems!', 'error');
     
     try {
-        const res = await fetch(${API_URL}/wallet/convert, {
+        const res = await fetch(`${API_URL}/wallet/convert`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': Bearer  },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             body: JSON.stringify({ gemsToConvert })
         });
         const data = await res.json();
@@ -3538,7 +3539,7 @@ async function submitGemsConversion() {
         document.getElementById('convertGemsInput').value = '';
         updateConvertPreview();
         
-        showToast(\Success! Converted \ Gems to \ Coins!\, 'success');
+        showToast(`Success! Converted ${data.convertedGems} Gems to ${data.receivedCoins} Coins!`, 'success');
     } catch(err) {
         showToast(err.message, 'error');
     }
@@ -3551,9 +3552,9 @@ async function submitWithdrawal() {
     if (!details) return showToast('Please enter your payment details', 'error');
     
     try {
-        const res = await fetch(${API_URL}/wallet/withdraw, {
+        const res = await fetch(`${API_URL}/wallet/withdraw`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': Bearer  },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             body: JSON.stringify({ method, details })
         });
         const data = await res.json();
@@ -3570,6 +3571,7 @@ async function submitWithdrawal() {
         showToast(err.message, 'error');
     }
 }
+
 // ===== INSTRUCTIONS MODAL =====
 function openInstructionsModal(encodedInstr) {
     const instr = decodeURIComponent(encodedInstr);
