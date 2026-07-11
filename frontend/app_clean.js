@@ -2790,34 +2790,20 @@ function selectPaymentMethod(method) {
                 <div style="color:var(--text-sub); font-size:0.9rem; margin-top:5px;">Scan to Pay via JazzCash App</div>
             </div>
         `;
-    } else if (method === 'creem') {
+    } else if (method === 'lemonsqueezy') {
         det.innerHTML = `
             <h3 style="margin-bottom:15px;font-size:1.1rem;color:#7C3AED"><i class="fas fa-credit-card"></i> Pay via Credit/Debit Card</h3>
-            <div style="background:var(--card-solid); padding:15px; border-radius:10px; border:1px solid #444; margin-bottom:10px;">
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label style="display:block;margin-bottom:5px;font-size:0.85rem;color:#aaa;">Cardholder Name *</label>
-                    <input type="text" class="form-input" placeholder="e.g. John Doe" style="width:100%;">
-                </div>
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label style="display:block;margin-bottom:5px;font-size:0.85rem;color:#aaa;">Card Number *</label>
-                    <div style="position:relative;">
-                        <i class="fas fa-credit-card" style="position:absolute;left:10px;top:12px;color:#777;"></i>
-                        <input type="text" class="form-input" placeholder="0000 0000 0000 0000" style="width:100%; padding-left:35px;" maxlength="19">
-                    </div>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <div class="form-group" style="flex:1;">
-                        <label style="display:block;margin-bottom:5px;font-size:0.85rem;color:#aaa;">Expiry (MM/YY) *</label>
-                        <input type="text" class="form-input" placeholder="MM/YY" style="width:100%;" maxlength="5">
-                    </div>
-                    <div class="form-group" style="flex:1;">
-                        <label style="display:block;margin-bottom:5px;font-size:0.85rem;color:#aaa;">CVV *</label>
-                        <input type="password" class="form-input" placeholder="123" style="width:100%;" maxlength="4">
-                    </div>
+            <div style="background:var(--card-solid); padding:20px; border-radius:10px; border:1px solid #444; margin-bottom:10px; text-align:center;">
+                <i class="fas fa-lock" style="font-size:3rem; color:#7C3AED; margin-bottom:15px;"></i>
+                <h4 style="margin-bottom:10px; color:#fff;">Secure Payment Checkout</h4>
+                <p style="color:var(--gray); font-size:0.9rem; margin-bottom:15px;">You will be redirected to our secure payment partner to enter your card details safely. We do not store any of your card information.</p>
+                <div style="display:flex; justify-content:center; gap:10px; font-size:1.5rem; margin-bottom:10px;">
+                    <i class="fab fa-cc-visa" style="color:#1a1f71"></i>
+                    <i class="fab fa-cc-mastercard" style="color:#ff5f00"></i>
+                    <i class="fab fa-paypal" style="color:#003087"></i>
                 </div>
             </div>
             <div style="font-size:1.3rem;font-weight:bold;color:#7C3AED;text-align:right;">Total to Pay: $${state.selectedPackage.price}</div>
-            <div style="margin-top:5px; color:#aaa; font-size:0.75rem; text-align:right;"><i class="fas fa-lock"></i> Secured by Creem Gateway</div>
         `;
     } else {
         det.innerHTML = `
@@ -2865,18 +2851,21 @@ function handlePaymentScreenshot(input) {
 async function submitPayment() {
     const method = state.selectedPaymentMethod;
     
-    // Auto-checkout for Creem
-    if (method === 'creem') {
+    // Auto-checkout for LemonSqueezy
+    if (method === 'lemonsqueezy') {
         const btn = document.getElementById('paymentSubmitBtn');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
         btn.disabled = true;
         try {
-            const res = await api.store.creemCheckout({ 
-                amount: state.selectedPackage.coins, 
-                price: state.selectedPackage.price 
+            const res = await api.request('/wallet/buy-coins', { 
+                method: 'POST',
+                body: JSON.stringify({ 
+                    coins: state.selectedPackage.coins, 
+                    priceUsd: state.selectedPackage.price 
+                })
             });
-            if (res.checkout_url) {
-                window.location.href = res.checkout_url;
+            if (res.checkoutUrl) {
+                window.location.href = res.checkoutUrl;
                 return;
             } else {
                 throw new Error("Checkout URL not found");
