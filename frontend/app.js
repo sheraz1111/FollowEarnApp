@@ -2986,7 +2986,8 @@ function selectPaymentMethod(method) {
                 <div style="color:var(--text-sub); font-size:0.9rem; margin-top:5px;">Scan to Pay via JazzCash App</div>
             </div>
         `;
-    } else if (method === 'lemonsqueezy') {
+        `;
+    } else if (method === 'paddle') {
         det.innerHTML = `
             <h3 style="margin-bottom:15px;font-size:1.1rem;color:#7C3AED"><i class="fas fa-credit-card"></i> Pay via Credit/Debit Card</h3>
             <div style="background:var(--card-solid); padding:20px; border-radius:10px; border:1px solid #444; margin-bottom:10px; text-align:center;">
@@ -3016,7 +3017,7 @@ function selectPaymentMethod(method) {
 
     document.querySelectorAll('.payment-method').forEach(el => el.style.borderColor = 'var(--border-main)');
     if (method === 'jazzcash') event.currentTarget.style.borderColor = 'var(--primary)';
-    else if (method === 'lemonsqueezy') event.currentTarget.style.borderColor = '#7C3AED';
+    else if (method === 'paddle') event.currentTarget.style.borderColor = '#7C3AED';
     else event.currentTarget.style.borderColor = 'var(--gold)';
 
     document.getElementById('paymentFormSection').classList.add('active');
@@ -3024,13 +3025,13 @@ function selectPaymentMethod(method) {
     // Hide proof inputs for Creem
     const proofSection = document.getElementById('paymentProofSection');
     if (proofSection) {
-        proofSection.style.display = method === 'lemonsqueezy' ? 'none' : 'block';
+        proofSection.style.display = method === 'paddle' ? 'none' : 'block';
     }
     
     // Change button text
     const submitBtn = document.getElementById('paymentSubmitBtn');
     if (submitBtn) {
-        submitBtn.innerHTML = method === 'lemonsqueezy' ? '<i class="fas fa-lock"></i> Pay Securely' : 'Submit Payment Proof';
+        submitBtn.innerHTML = method === 'paddle' ? '<i class="fas fa-lock"></i> Pay Securely' : 'Submit Payment Proof';
     }
 }
 function handlePaymentScreenshot(input) {
@@ -3053,11 +3054,30 @@ async function submitPayment() {
     if (state.directOrder && !targetUrl) return showToast('Please enter the Target URL', 'error');
     if (!state.selectedPackage) return showToast('Please select a package', 'error');
 
-    if (method === 'lemonsqueezy') {
+    if (method === 'paddle') {
         const btn = document.getElementById('paymentSubmitBtn');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading Secure Checkout...';
         btn.disabled = true;
         try {
+            if (typeof Paddle === 'undefined') {
+                throw new Error("Payment gateway is still loading. Please try again in a few seconds.");
+            }
+            
+            // Initialize Paddle if not already initialized
+            if (!window.paddleInitialized) {
+                Paddle.Initialize({ 
+                    token: 'live_db527ac846142f27b2f0bb8fd12',
+                    // Optional: Event callback for successful payments
+                    eventCallback: function(data) {
+                        if (data.name === "checkout.completed") {
+                            showToast("Payment Successful! Your coins will be added shortly.", "success");
+                            setTimeout(() => { window.location.reload(); }, 3000);
+                        }
+                    }
+                });
+                window.paddleInitialized = true;
+            }
+
             const payload = {
                 coins: state.selectedPackage.coins, 
                 priceUsd: state.selectedPackage.price 
@@ -3070,15 +3090,20 @@ async function submitPayment() {
                 };
             }
 
-            const res = await api.request('/wallet/buy-coins', { 
+            const res = await api.request('/paddle/transaction', { 
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
-            if (res.checkoutUrl) {
-                window.location.href = res.checkoutUrl;
+            if (res.transactionId) {
+                // Open Paddle Overlay Checkout
+                Paddle.Checkout.open({
+                    transactionId: res.transactionId
+                });
+                btn.innerHTML = '<i class="fas fa-lock"></i> Pay Securely';
+                btn.disabled = false;
                 return;
             } else {
-                throw new Error("Checkout URL not found");
+                throw new Error("Transaction could not be generated.");
             }
         } catch (e) {
             btn.innerHTML = '<i class="fas fa-lock"></i> Pay Securely';
